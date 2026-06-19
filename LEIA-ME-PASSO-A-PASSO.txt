@@ -83,3 +83,31 @@ Se aparecer algo estranho após atualizar o GitHub:
 - Aperte Ctrl + F5.
 - Teste em aba anônima.
 - Confirme se o GitHub atualizou os arquivos.
+
+ATUALIZAÇÃO - IMPORTAÇÃO EXCEL E QR CODE
+
+1. Campos com lista inteligente
+- No cadastro, os campos Categoria, Modelo, Local, Etiqueta, Responsável, Status e Origem agora mostram sugestões já existentes no banco.
+- Mesmo com sugestões, você pode digitar uma nova opção normalmente.
+
+2. Importar equipamentos por Excel
+- Entre com usuário Administrador.
+- Acesse o menu "Importar Excel".
+- Clique em "Selecionar planilha Excel".
+- O sistema aceita .xlsx, .xls e .csv.
+- Colunas reconhecidas: tipo, categoria, modelo, numeroSerie, patrimônio, imei, hostname, local, etiqueta, responsável, status, origem e observação.
+- O botão "Baixar modelo CSV" gera um arquivo modelo para preencher.
+
+3. Enviar dados iniciais
+- O botão "Enviar dados iniciais" foi movido para Configurações.
+- Apenas Administrador consegue ver e usar.
+
+4. Escanear QR Code
+- Acesse o menu "Escanear QR".
+- Clique em "Iniciar câmera" e aponte para o QR Code do equipamento.
+- O QR Code abre o cadastro do equipamento dentro do sistema.
+- O leitor de QR Code precisa estar em HTTPS, então funciona no GitHub Pages.
+
+5. QR Code dos equipamentos
+- Ao abrir um equipamento, o QR Code gerado agora aponta para o link do próprio equipamento no sistema.
+- Cole esse QR Code no equipamento para localização rápida.

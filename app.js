@@ -35,11 +35,13 @@ function initFirebase(){
 }
 async function login(){
   $("loginMsg").textContent="";
+  if(!state.auth){ $("loginMsg").textContent="Firebase não carregou. Confira firebase-config.js e atualize com Ctrl+F5."; return; }
   try{ await signInWithEmailAndPassword(state.auth, $("email").value.trim(), $("password").value); }
   catch(e){ $("loginMsg").textContent = "Erro ao entrar: " + errorText(e); }
 }
 async function createUser(){
   $("loginMsg").textContent="";
+  if(!state.auth){ $("loginMsg").textContent="Firebase não carregou. Confira firebase-config.js e atualize com Ctrl+F5."; return; }
   try{ await createUserWithEmailAndPassword(state.auth, $("email").value.trim(), $("password").value); toast("Usuário criado com sucesso"); }
   catch(e){ $("loginMsg").textContent = "Erro ao criar usuário: " + errorText(e); }
 }

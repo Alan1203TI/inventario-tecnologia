@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=22" />
+  <link rel="stylesheet" href="style.css?v=23" />
 </head>
 <body>
   <div id="toast" class="toast"></div>
@@ -35,6 +35,8 @@
   </section>
 
   <main id="appScreen" class="app hidden">
+    <button id="mobileMenuBtn" class="mobile-menu-btn" aria-label="Abrir menu">☰</button>
+    <div id="mobileMenuBackdrop" class="mobile-menu-backdrop"></div>
     <aside class="sidebar">
       <div class="side-brand">
         <img src="logo-sesi.png" alt="SESI" class="side-logo">
@@ -217,6 +219,6 @@
   <script src="dados-iniciais.js?v=20"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <script type="module" src="app.js?v=22"></script>
+  <script type="module" src="app.js?v=23"></script>
 </body>
 </html>

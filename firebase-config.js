@@ -1,4 +1,4 @@
-window.firebaseConfig = {
+const firebaseConfig = {
   apiKey: "AIzaSyDrdZqpaaZ9sQ9H3v3L9j51FDiFF-Q77LY",
   authDomain: "tecsesi.firebaseapp.com",
   projectId: "tecsesi",

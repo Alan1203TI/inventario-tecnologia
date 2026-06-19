@@ -1,5 +1,5 @@
-window.firebaseConfig = {
-  apiKey: "AIzaSy4aAuSj_0-6fqJTFp3iLh_xTEXOp19CzLo",
+const firebaseConfig = {
+  apiKey: "AIzaSyA4aUSj_O-6fqJTFp3iLh_xTEXOpl9CzLo",
   authDomain: "equipamentos-sesi.firebaseapp.com",
   projectId: "equipamentos-sesi",
   storageBucket: "equipamentos-sesi.firebasestorage.app",

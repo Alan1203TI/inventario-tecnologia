@@ -1,12 +1,50 @@
-rules_version = '2';
+REGRAS SIMPLES PARA COMEÇAR
 
+Cole em Firestore Database > Rules e clique em Publicar:
+
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /equipamentos/{document=**} {
+    match /{document=**} {
       allow read, write: if request.auth != null;
     }
-    match /movimentacoes/{document=**} {
-      allow read, write: if request.auth != null;
+  }
+}
+
+Observação:
+- O sistema possui níveis de acesso na tela: Administrador, Técnico TI e Consulta.
+- Essas regras simples deixam qualquer usuário logado escrever no banco.
+- Para uso interno inicial é mais fácil.
+- Quando estiver tudo pronto, podemos trocar para regras avançadas por perfil.
+
+REGRAS AVANÇADAS OPCIONAIS
+
+Use somente depois que o primeiro administrador já tiver sido criado na coleção usuarios:
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function role() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.nivel;
+    }
+    function admin() { return signedIn() && role() == 'admin'; }
+    function editor() { return signedIn() && (role() == 'admin' || role() == 'tecnico'); }
+
+    match /equipamentos/{id} {
+      allow read: if signedIn();
+      allow create, update: if editor();
+      allow delete: if admin();
+    }
+    match /movimentacoes/{id} {
+      allow read: if signedIn();
+      allow create: if editor() || admin();
+      allow update, delete: if admin();
+    }
+    match /usuarios/{uid} {
+      allow read: if signedIn();
+      allow create: if signedIn() && uid == request.auth.uid;
+      allow update, delete: if admin();
     }
   }
 }

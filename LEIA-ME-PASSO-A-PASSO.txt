@@ -1,97 +1,85 @@
-SISTEMA INVENTÁRIO SESI - FIREBASE V10 + GITHUB PAGES
+SISTEMA INVENTÁRIO SESI DOM BOSCO - FIREBASE + GITHUB PAGES
 
-VERSÃO CORRIGIDA
-- Integração refeita usando Firebase Web SDK v10 modular.
-- Arquivo firebase-config.js já está preenchido com os dados enviados do projeto equipamentos-sesi.
-- Dados iniciais das planilhas já estão no arquivo dados-iniciais.js.
-- Use o botão "Enviar dados iniciais" apenas uma vez.
+VERSÃO COM ALTERAÇÕES:
+- Logo SESI no login e no sistema.
+- Foto da unidade como fundo da tela de login e banner do dashboard.
+- Dashboard com total, tablets, notebooks, computadores, smartphones, manutenção, reserva e baixados.
+- Níveis de acesso: Administrador, Técnico TI e Consulta.
+- Tela de usuários para administrador alterar permissões.
+- Histórico de alterações com usuário, ação e campos alterados.
+- Cadastro/edição com foto do equipamento.
+- QR Code automático por patrimônio/série/local.
+- Exportação CSV/Excel.
+- Backup JSON.
+- Dados iniciais das planilhas já no arquivo dados-iniciais.js.
 
-ARQUIVOS IMPORTANTES
-- index.html: tela principal do sistema.
-- style.css: aparência do sistema.
-- app.js: funcionamento do sistema e conexão Firebase.
-- firebase-config.js: configuração do seu Firebase.
-- dados-iniciais.js: base inicial com os equipamentos das planilhas.
-- REGRAS-FIRESTORE.txt: regras para colar no Firestore.
-
-PASSO 1 - SUBIR NO GITHUB
+COMO ATUALIZAR NO GITHUB
 1. Extraia este ZIP.
 2. Abra a pasta inventario_sesi_firebase_v10_final.
-3. Apague os arquivos antigos do repositório inventario-tecnologia, se necessário.
-4. Envie todos estes arquivos para o GitHub.
-5. Aguarde 1 a 2 minutos para o GitHub Pages atualizar.
-6. Abra o site e pressione Ctrl + F5.
+3. Envie TODOS os arquivos para o repositório GitHub:
+   - index.html
+   - style.css
+   - app.js
+   - dados-iniciais.js
+   - firebase-config.js
+   - logo-sesi.png
+   - unidade-sesi.png
+   - REGRAS-FIRESTORE.txt
+   - LEIA-ME-PASSO-A-PASSO.txt
+4. Aguarde o GitHub Pages atualizar.
+5. Abra o site e aperte Ctrl + F5.
 
-PASSO 2 - CONFERIR O FIREBASE AUTHENTICATION
-No Firebase Console:
-1. Abra o projeto equipamentos-sesi.
-2. Vá em Authentication.
-3. Vá em Sign-in method.
-4. Confirme se E-mail/senha está ATIVADO.
-5. Vá em Settings > Authorized domains.
-6. Confirme que existe o domínio:
+CONFIGURAÇÃO DO FIREBASE
+O arquivo firebase-config.js já está configurado para o projeto:
+tecsesi
+
+Se criar outro projeto, substitua o conteúdo do firebase-config.js por:
+
+window.firebaseConfig = {
+  apiKey: "SUA_API_KEY",
+  authDomain: "SEU_PROJETO.firebaseapp.com",
+  projectId: "SEU_PROJETO",
+  storageBucket: "SEU_PROJETO.firebasestorage.app",
+  messagingSenderId: "SEU_ID",
+  appId: "SEU_APP_ID"
+};
+
+NO FIREBASE, CONFIRA:
+1. Authentication > Sign-in method > E-mail/senha ativado.
+2. Authentication > Settings > Authorized domains:
    alan1203ti.github.io
+3. Firestore Database criado.
+4. Firestore Rules: copie o conteúdo do arquivo REGRAS-FIRESTORE.txt.
 
-PASSO 3 - CRIAR FIRESTORE DATABASE
-No Firebase Console:
-1. Vá em Firestore Database.
-2. Clique em Criar banco de dados.
-3. Use modo produção ou teste.
-4. Escolha uma região.
+PRIMEIRO ACESSO
+1. Abra o sistema.
+2. Clique em Criar usuário com seu e-mail.
+3. O primeiro usuário criado vira Administrador automaticamente.
+4. Usuários criados depois entram como Consulta.
+5. O Administrador pode mudar permissões em Usuários.
 
-PASSO 4 - COLOCAR AS REGRAS DO FIRESTORE
-1. Abra o arquivo REGRAS-FIRESTORE.txt.
-2. Copie o conteúdo.
-3. No Firebase, vá em Firestore Database > Rules.
-4. Cole as regras.
-5. Clique em Publicar.
+IMPORTAR AS PLANILHAS INICIAIS
+1. Entre como Administrador.
+2. Clique em Enviar dados iniciais.
+3. Confirme.
+4. Os equipamentos serão gravados no Firestore.
+5. Use apenas uma vez para não duplicar.
 
-Regras básicas usadas:
-- Usuário logado consegue ler e gravar.
-- Usuário não logado não acessa os dados.
+NÍVEIS DE ACESSO
+Administrador:
+- Cadastra, edita, exclui, importa dados, apaga tudo, altera usuários.
 
-PASSO 5 - TESTAR LOGIN
-1. Abra o site pelo GitHub Pages.
-2. Informe e-mail e senha.
-3. Clique em Criar usuário.
-4. Depois faça login.
+Técnico TI:
+- Cadastra e edita equipamentos.
+- Não exclui e não altera usuários.
 
-A senha precisa ter pelo menos 6 caracteres.
+Consulta:
+- Apenas pesquisa, visualiza e exporta.
 
-PASSO 6 - ENVIAR OS DADOS INICIAIS
-Depois que entrar no sistema:
-1. Clique em Enviar dados iniciais.
-2. Confirme.
-3. Aguarde carregar.
-4. O dashboard deve mostrar os equipamentos.
+IMPORTANTE
+O que qualquer usuário alterar no sistema é salvo no Firebase e aparece para todos os computadores/celulares que acessarem o sistema.
 
-IMPORTANTE: clique em "Enviar dados iniciais" apenas uma vez.
-Se clicar mais vezes, poderá duplicar os equipamentos.
-
-PASSO 7 - USO DO SISTEMA
-Você poderá:
-- Cadastrar equipamentos.
-- Editar equipamentos.
-- Excluir equipamentos.
-- Pesquisar por patrimônio, número de série, local, responsável ou hostname.
-- Filtrar por tipo, status e local.
-- Exportar CSV/Excel.
-- Baixar backup JSON.
-- Importar backup JSON.
-
-SE DER ERRO
-1. Pressione F12 no navegador.
-2. Abra a aba Console.
-3. Tente entrar/criar usuário.
-4. Veja a mensagem em vermelho.
-
-Erros comuns:
-- auth/invalid-api-key: firebase-config.js não foi atualizado no GitHub ou está em cache.
-- auth/unauthorized-domain: falta autorizar alan1203ti.github.io no Firebase Authentication.
-- auth/email-already-in-use: o usuário já foi criado; use Entrar.
-- auth/weak-password: senha com menos de 6 caracteres.
-- permission-denied: regras do Firestore não foram publicadas corretamente.
-
-DICA DE CACHE
-Sempre que subir arquivos novos no GitHub, abra o site e pressione Ctrl + F5.
-Também pode testar em aba anônima.
+Se aparecer algo estranho após atualizar o GitHub:
+- Aperte Ctrl + F5.
+- Teste em aba anônima.
+- Confirme se o GitHub atualizou os arquivos.

@@ -1,0 +1,29 @@
+SISTEMA INVENTÁRIO SESI - FIREBASE + GITHUB PAGES
+
+Total de dados iniciais incluídos: 584 equipamentos
+- Tablets: 384
+- Smartphones: 100
+- Notebooks: 71
+- Computadores: 29
+
+PASSO A PASSO
+
+1) Crie/abra seu projeto no Firebase.
+2) Vá em Authentication > Get started > Sign-in method.
+3) Habilite Email/Password.
+4) Vá em Firestore Database > Create database.
+5) Vá em Firestore Database > Rules e cole o conteúdo do arquivo REGRAS-FIRESTORE.txt.
+6) Vá em Configurações do projeto > Geral > Seus apps.
+7) Crie um app Web e copie os dados firebaseConfig.
+8) Abra o arquivo firebase-config.js e substitua os valores de exemplo.
+9) Suba todos os arquivos para o GitHub.
+10) Ative o GitHub Pages em Settings > Pages.
+11) No Firebase, vá em Authentication > Settings > Authorized domains.
+12) Adicione seu domínio do GitHub Pages, exemplo: alancel1203.github.io.
+13) Abra o site, crie o primeiro usuário e entre.
+14) Clique uma única vez em "Enviar dados iniciais".
+
+IMPORTANTE:
+- Não clique várias vezes em "Enviar dados iniciais", para não duplicar os registros.
+- Para exportar em Excel, use o botão Exportar Excel/CSV. O arquivo CSV abre normalmente no Excel.
+- O banco fica no Firebase. O GitHub hospeda apenas a tela do sistema.

@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Inventário SESI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="toast" class="toast"></div>
+
+  <section id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <div class="brand">
+        <div class="logo">SESI</div>
+        <div>
+          <h1>Inventário SESI</h1>
+          <p>Sistema profissional com Firebase</p>
+        </div>
+      </div>
+      <div class="notice" id="configNotice">Verificando configuração do Firebase...</div>
+      <label>E-mail</label>
+      <input id="email" type="email" placeholder="seuemail@dominio.com" autocomplete="email">
+      <label>Senha</label>
+      <input id="password" type="password" placeholder="mínimo 6 caracteres" autocomplete="current-password">
+      <button id="loginBtn" class="btn primary full">Entrar</button>
+      <button id="createUserBtn" class="btn secondary full">Criar usuário</button>
+      <p id="loginMsg" class="error"></p>
+      <p class="small">Depois de configurar o Firebase, habilite Authentication > Email/Password.</p>
+    </div>
+  </section>
+
+  <main id="appScreen" class="app hidden">
+    <aside class="sidebar">
+      <div class="side-brand">
+        <div class="logo small-logo">SESI</div>
+        <div>
+          <strong>Inventário</strong>
+          <span>Dom Bosco</span>
+        </div>
+      </div>
+      <nav>
+        <a href="#dashboard" class="active" data-view="dashboard">Dashboard</a>
+        <a href="#equipamentos" data-view="equipamentos">Equipamentos</a>
+        <a href="#cadastro" data-view="cadastro">Novo cadastro</a>
+        <a href="#movimentacoes" data-view="movimentacoes">Movimentações</a>
+        <a href="#config" data-view="config">Configurações</a>
+      </nav>
+      <button id="logoutBtn" class="btn ghost">Sair</button>
+    </aside>
+
+    <section class="content">
+      <header class="topbar">
+        <div>
+          <h2 id="pageTitle">Dashboard</h2>
+          <p id="userInfo">Conectado</p>
+        </div>
+        <div class="top-actions">
+          <button id="seedBtn" class="btn warning">Enviar dados iniciais</button>
+          <button id="exportBtn" class="btn secondary">Exportar Excel/CSV</button>
+          <button id="openNewBtn" class="btn primary">Novo equipamento</button>
+        </div>
+      </header>
+
+      <section id="view-dashboard" class="view">
+        <div class="cards">
+          <div class="card kpi"><span>Total</span><strong id="kpiTotal">0</strong><small>equipamentos cadastrados</small></div>
+          <div class="card kpi"><span>Tablets</span><strong id="kpiTablets">0</strong><small>Samsung T500/A9+</small></div>
+          <div class="card kpi"><span>Notebooks</span><strong id="kpiNotebooks">0</strong><small>ADM e Educacional</small></div>
+          <div class="card kpi"><span>Computadores</span><strong id="kpiComputadores">0</strong><small>ADM e Educacional</small></div>
+          <div class="card kpi"><span>Smartphones</span><strong id="kpiSmartphones">0</strong><small>A31 e A32</small></div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Equipamentos por tipo</h3>
+            <div id="tipoBars" class="bars"></div>
+          </div>
+          <div class="card">
+            <h3>Locais com mais equipamentos</h3>
+            <div id="localBars" class="bars"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-equipamentos" class="view hidden">
+        <div class="card">
+          <div class="filters">
+            <input id="searchInput" placeholder="Pesquisar por patrimônio, série, local, usuário, hostname..." />
+            <select id="filterTipo"><option value="">Todos os tipos</option></select>
+            <select id="filterStatus"><option value="">Todos os status</option></select>
+            <select id="filterLocal"><option value="">Todos os locais</option></select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tipo</th><th>Modelo</th><th>Série/IMEI</th><th>Patrimônio</th><th>Hostname</th><th>Local</th><th>Responsável</th><th>Status</th><th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="equipTable"></tbody>
+            </table>
+          </div>
+          <div class="table-footer">
+            <span id="resultCount">0 itens</span>
+            <div>
+              <button id="prevPage" class="btn small">Anterior</button>
+              <span id="pageInfo"></span>
+              <button id="nextPage" class="btn small">Próxima</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-cadastro" class="view hidden">
+        <div class="card">
+          <h3 id="formTitle">Novo equipamento</h3>
+          <form id="equipForm" class="form-grid">
+            <input type="hidden" id="editId">
+            <label>Tipo<select id="tipo" required><option>Tablet</option><option>Smartphone</option><option>Notebook</option><option>Computador</option><option>Monitor</option><option>Impressora</option><option>Outro</option></select></label>
+            <label>Categoria<input id="categoria" placeholder="ADM, Educacional, A9+, T500..."></label>
+            <label>Modelo<input id="modelo" placeholder="Modelo"></label>
+            <label>Nº de série<input id="numeroSerie" placeholder="Número de série"></label>
+            <label>Patrimônio<input id="patrimonio" placeholder="Patrimônio"></label>
+            <label>IMEI<input id="imei" placeholder="IMEI, se houver"></label>
+            <label>Hostname<input id="hostname" placeholder="Nome do computador"></label>
+            <label>Local<input id="local" placeholder="Sala, setor, laboratório"></label>
+            <label>Etiqueta<input id="etiqueta" placeholder="Etiqueta/identificação"></label>
+            <label>Responsável<input id="responsavel" placeholder="Usuário/responsável"></label>
+            <label>Status<select id="status"><option>Ativo</option><option>Reserva</option><option>Em manutenção</option><option>Baixado</option><option>Emprestado</option></select></label>
+            <label>Origem<input id="origem" placeholder="Planilha de origem"></label>
+            <label class="full-span">Observação<textarea id="observacao" placeholder="Observações"></textarea></label>
+            <div class="full-span form-actions">
+              <button type="submit" class="btn primary">Salvar equipamento</button>
+              <button type="button" id="clearFormBtn" class="btn secondary">Limpar</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section id="view-movimentacoes" class="view hidden">
+        <div class="card">
+          <h3>Últimas movimentações</h3>
+          <div id="historyList" class="history"></div>
+        </div>
+      </section>
+
+      <section id="view-config" class="view hidden">
+        <div class="card">
+          <h3>Configurações e backup</h3>
+          <p>Use “Enviar dados iniciais” apenas uma vez, após configurar o Firebase.</p>
+          <div class="config-actions">
+            <button id="backupJsonBtn" class="btn secondary">Baixar backup JSON</button>
+            <label class="file-label">Importar backup JSON<input type="file" id="importJsonInput" accept=".json"></label>
+            <button id="deleteAllBtn" class="btn danger">Apagar todos os equipamentos</button>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="firebase-config.js"></script>
+  <script src="dados-iniciais.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

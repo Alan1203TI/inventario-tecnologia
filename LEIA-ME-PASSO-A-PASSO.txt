@@ -1,0 +1,97 @@
+SISTEMA INVENTÁRIO SESI - FIREBASE V10 + GITHUB PAGES
+
+VERSÃO CORRIGIDA
+- Integração refeita usando Firebase Web SDK v10 modular.
+- Arquivo firebase-config.js já está preenchido com os dados enviados do projeto equipamentos-sesi.
+- Dados iniciais das planilhas já estão no arquivo dados-iniciais.js.
+- Use o botão "Enviar dados iniciais" apenas uma vez.
+
+ARQUIVOS IMPORTANTES
+- index.html: tela principal do sistema.
+- style.css: aparência do sistema.
+- app.js: funcionamento do sistema e conexão Firebase.
+- firebase-config.js: configuração do seu Firebase.
+- dados-iniciais.js: base inicial com os equipamentos das planilhas.
+- REGRAS-FIRESTORE.txt: regras para colar no Firestore.
+
+PASSO 1 - SUBIR NO GITHUB
+1. Extraia este ZIP.
+2. Abra a pasta inventario_sesi_firebase_v10_final.
+3. Apague os arquivos antigos do repositório inventario-tecnologia, se necessário.
+4. Envie todos estes arquivos para o GitHub.
+5. Aguarde 1 a 2 minutos para o GitHub Pages atualizar.
+6. Abra o site e pressione Ctrl + F5.
+
+PASSO 2 - CONFERIR O FIREBASE AUTHENTICATION
+No Firebase Console:
+1. Abra o projeto equipamentos-sesi.
+2. Vá em Authentication.
+3. Vá em Sign-in method.
+4. Confirme se E-mail/senha está ATIVADO.
+5. Vá em Settings > Authorized domains.
+6. Confirme que existe o domínio:
+   alan1203ti.github.io
+
+PASSO 3 - CRIAR FIRESTORE DATABASE
+No Firebase Console:
+1. Vá em Firestore Database.
+2. Clique em Criar banco de dados.
+3. Use modo produção ou teste.
+4. Escolha uma região.
+
+PASSO 4 - COLOCAR AS REGRAS DO FIRESTORE
+1. Abra o arquivo REGRAS-FIRESTORE.txt.
+2. Copie o conteúdo.
+3. No Firebase, vá em Firestore Database > Rules.
+4. Cole as regras.
+5. Clique em Publicar.
+
+Regras básicas usadas:
+- Usuário logado consegue ler e gravar.
+- Usuário não logado não acessa os dados.
+
+PASSO 5 - TESTAR LOGIN
+1. Abra o site pelo GitHub Pages.
+2. Informe e-mail e senha.
+3. Clique em Criar usuário.
+4. Depois faça login.
+
+A senha precisa ter pelo menos 6 caracteres.
+
+PASSO 6 - ENVIAR OS DADOS INICIAIS
+Depois que entrar no sistema:
+1. Clique em Enviar dados iniciais.
+2. Confirme.
+3. Aguarde carregar.
+4. O dashboard deve mostrar os equipamentos.
+
+IMPORTANTE: clique em "Enviar dados iniciais" apenas uma vez.
+Se clicar mais vezes, poderá duplicar os equipamentos.
+
+PASSO 7 - USO DO SISTEMA
+Você poderá:
+- Cadastrar equipamentos.
+- Editar equipamentos.
+- Excluir equipamentos.
+- Pesquisar por patrimônio, número de série, local, responsável ou hostname.
+- Filtrar por tipo, status e local.
+- Exportar CSV/Excel.
+- Baixar backup JSON.
+- Importar backup JSON.
+
+SE DER ERRO
+1. Pressione F12 no navegador.
+2. Abra a aba Console.
+3. Tente entrar/criar usuário.
+4. Veja a mensagem em vermelho.
+
+Erros comuns:
+- auth/invalid-api-key: firebase-config.js não foi atualizado no GitHub ou está em cache.
+- auth/unauthorized-domain: falta autorizar alan1203ti.github.io no Firebase Authentication.
+- auth/email-already-in-use: o usuário já foi criado; use Entrar.
+- auth/weak-password: senha com menos de 6 caracteres.
+- permission-denied: regras do Firestore não foram publicadas corretamente.
+
+DICA DE CACHE
+Sempre que subir arquivos novos no GitHub, abra o site e pressione Ctrl + F5.
+Também pode testar em aba anônima.

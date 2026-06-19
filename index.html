@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=21" />
+  <link rel="stylesheet" href="style.css?v=22" />
 </head>
 <body>
   <div id="toast" class="toast"></div>
@@ -149,11 +149,26 @@
         </div>
       </section>
 
+      <section id="view-detalhe" class="view hidden">
+        <div class="card detail-card">
+          <div class="detail-header">
+            <div>
+              <h3 id="detailTitle">Detalhes do equipamento</h3>
+              <p id="detailSubtitle" class="muted">Visualização individual do equipamento.</p>
+            </div>
+            <div class="detail-actions">
+              <button id="backToListBtn" class="btn secondary">Voltar para lista</button>
+              <button id="editDetailBtn" class="btn primary" data-edit-action="true">Editar equipamento</button>
+            </div>
+          </div>
+          <div id="detailContent" class="equipment-detail"></div>
+        </div>
+      </section>
 
       <section id="view-qrscanner" class="view hidden">
         <div class="card">
           <h3>Escanear QR Code do equipamento</h3>
-          <p class="muted">Use a câmera do celular ou notebook para ler a etiqueta QR Code colada no equipamento. Ao identificar, o sistema abre o cadastro do equipamento automaticamente.</p>
+          <p class="muted">Use a câmera do celular ou notebook para ler a etiqueta QR Code colada no equipamento. Ao identificar, o sistema abre a ficha individual do equipamento automaticamente.</p>
           <div class="qr-actions">
             <button id="startQrBtn" class="btn primary">Iniciar câmera</button>
             <button id="stopQrBtn" class="btn secondary">Parar câmera</button>
@@ -202,6 +217,6 @@
   <script src="dados-iniciais.js?v=20"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <script type="module" src="app.js?v=21"></script>
+  <script type="module" src="app.js?v=22"></script>
 </body>
 </html>

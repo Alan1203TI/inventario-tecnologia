@@ -3,7 +3,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, collection, addDoc, doc, setDoc, updateDoc, deleteDoc, getDocs, writeBatch, serverTimestamp, query, orderBy, limit, getDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
-const state = { app:null, auth:null, db:null, equipamentos:[], filtered:[], page:1, perPage:25, user:null, perfil:null, usuarios:[], qrScanner:null, pendingEquipId:null };
+const state = { app:null, auth:null, db:null, equipamentos:[], filtered:[], page:1, perPage:25, user:null, perfil:null, usuarios:[], qrScanner:null, pendingEquipId:null, currentDetailId:null };
 const ROLES = { admin:"Administrador", tecnico:"Técnico TI", consulta:"Consulta" };
 const canAdmin = () => state.perfil?.nivel === "admin";
 const canEdit = () => ["admin","tecnico"].includes(state.perfil?.nivel);
@@ -80,7 +80,7 @@ function fillSmartLists(){
 function applyFilters(){ const term = $("searchInput")?.value?.toLowerCase() || ""; const tipo = $("filterTipo")?.value || "", status = $("filterStatus")?.value || "", local = $("filterLocal")?.value || ""; state.filtered = state.equipamentos.filter(e=>{ const blob = Object.values(e).join(" ").toLowerCase(); return (!term || blob.includes(term)) && (!tipo || e.tipo===tipo) && (!status || e.status===status) && (!local || e.local===local); }); state.page=1; renderTable(); }
 function renderTable(){
   const total=state.filtered.length, pages=Math.max(1, Math.ceil(total/state.perPage)); state.page=Math.min(state.page,pages); const rows=state.filtered.slice((state.page-1)*state.perPage, state.page*state.perPage);
-  $("equipTable").innerHTML = rows.map(e=>`<tr><td>${esc(e.tipo)}</td><td>${esc(e.modelo||e.categoria)}</td><td>${esc(e.numeroSerie||e.imei)}</td><td>${esc(e.patrimonio)}</td><td>${esc(e.hostname)}</td><td>${esc(e.local)}</td><td>${esc(e.responsavel)}</td><td><span class="pill ${pillClass(e.status)}">${esc(e.status||"Ativo")}</span></td><td><button class="btn small secondary" data-edit="${e.id}">Ver/Editar</button> ${canAdmin()?`<button class="btn small danger" data-del="${e.id}">Excluir</button>`:""}</td></tr>`).join("");
+  $("equipTable").innerHTML = rows.map(e=>`<tr class="clickable-row" data-view-equip="${e.id}"><td>${esc(e.tipo)}</td><td>${esc(e.modelo||e.categoria)}</td><td>${esc(e.numeroSerie||e.imei)}</td><td>${esc(e.patrimonio)}</td><td>${esc(e.hostname)}</td><td>${esc(e.local)}</td><td>${esc(e.responsavel)}</td><td><span class="pill ${pillClass(e.status)}">${esc(e.status||"Ativo")}</span></td><td class="table-actions"><button class="btn small secondary" data-view-equip="${e.id}">Ver</button> ${canEdit()?`<button class="btn small secondary" data-edit="${e.id}">Editar</button>`:""} ${canAdmin()?`<button class="btn small danger" data-del="${e.id}">Excluir</button>`:""}</td></tr>`).join("");
   $("resultCount").textContent = `${total} itens`; $("pageInfo").textContent = `${state.page} / ${pages}`;
 }
 function renderDashboard(){ const count=(fn)=>state.equipamentos.filter(fn).length; $("kpiTotal").textContent=state.equipamentos.length; $("kpiTablets").textContent=count(e=>e.tipo==="Tablet"); $("kpiNotebooks").textContent=count(e=>e.tipo==="Notebook"); $("kpiComputadores").textContent=count(e=>e.tipo==="Computador"); $("kpiSmartphones").textContent=count(e=>e.tipo==="Smartphone"); $("kpiManutencao").textContent=count(e=>e.status==="Em manutenção"); $("kpiReserva").textContent=count(e=>e.status==="Reserva"); $("kpiBaixados").textContent=count(e=>e.status==="Baixado"); makeBars("tipoBars", groupBy(state.equipamentos,"tipo")); makeBars("localBars", Object.fromEntries(Object.entries(groupBy(state.equipamentos,"local")).sort((a,b)=>b[1]-a[1]).slice(0,8))); }
@@ -160,29 +160,77 @@ function downloadExcelModel(){
   const sample=["Notebook","ADM","Dell Latitude","","12345","","NB-ADM-01","TI","","Alan","Ativo","Modelo manual",""];
   download("modelo_importacao_inventario.csv", "\ufeff"+headers.join(";")+"\n"+sample.map(v=>`\"${String(v).replaceAll('"','""')}\"`).join(";"), "text/csv;charset=utf-8");
 }
-function openEquipmentById(id){
-  const item=state.equipamentos.find(x=>x.id===id);
+async function openEquipmentById(id, source="") {
+  let item = state.equipamentos.find(x=>x.id===id);
+  if(!item && state.db){
+    try{
+      const snap = await getDoc(doc(state.db,"equipamentos",id));
+      if(snap.exists()){
+        item = {id:snap.id, ...snap.data()};
+        if(!state.equipamentos.some(x=>x.id===item.id)) state.equipamentos.push(item);
+      }
+    }catch(_){}
+  }
   if(!item) return false;
-  setFormData(item);
-  showView("cadastro");
-  toast("Equipamento localizado pelo QR Code");
+  renderEquipmentDetail(item);
+  showView("detalhe");
+  if(source) toast(source);
   return true;
+}
+function fieldBlock(label, value){ return `<div class="detail-field"><span>${esc(label)}</span><b>${esc(value || "Não informado")}</b></div>`; }
+function renderEquipmentDetail(e={}){
+  state.currentDetailId = e.id || null;
+  const title = e.patrimonio || e.hostname || e.numeroSerie || e.imei || e.modelo || "Equipamento";
+  $("detailTitle").textContent = title;
+  $("detailSubtitle").textContent = `${e.tipo || "Tipo não informado"}${e.local ? " · " + e.local : ""}`;
+  const qrData = e.id ? `${location.origin}${location.pathname}?equip=${encodeURIComponent(e.id)}` : (e.patrimonio || e.numeroSerie || e.imei || e.hostname || "");
+  const qrHtml = qrData ? `<div class="detail-qr"><img alt="QR Code" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrData)}"><small>QR Code deste equipamento</small></div>` : "";
+  const fotoHtml = e.fotoUrl ? `<img class="detail-photo" src="${esc(e.fotoUrl)}" alt="Foto do equipamento">` : `<div class="detail-photo empty">Sem foto</div>`;
+  $("detailContent").innerHTML = `
+    <div class="detail-top">
+      ${fotoHtml}
+      ${qrHtml}
+    </div>
+    <div class="detail-grid">
+      ${fieldBlock("Tipo", e.tipo)}
+      ${fieldBlock("Categoria", e.categoria)}
+      ${fieldBlock("Modelo", e.modelo)}
+      ${fieldBlock("Nº de série", e.numeroSerie)}
+      ${fieldBlock("Patrimônio", e.patrimonio)}
+      ${fieldBlock("IMEI", e.imei)}
+      ${fieldBlock("Hostname", e.hostname)}
+      ${fieldBlock("Local", e.local)}
+      ${fieldBlock("Etiqueta", e.etiqueta)}
+      ${fieldBlock("Responsável", e.responsavel)}
+      ${fieldBlock("Status", e.status || "Ativo")}
+      ${fieldBlock("Origem", e.origem)}
+    </div>
+    <div class="detail-observation"><span>Observação</span><p>${esc(e.observacao || "Nenhuma observação cadastrada.")}</p></div>
+  `;
+  const editBtn = $("editDetailBtn");
+  if(editBtn) editBtn.classList.toggle("hidden", !canEdit());
+}
+
+function extractEquipIdFromCode(code){
+  const clean=String(code||"").trim();
+  if(!clean) return "";
+  try{
+    const url = new URL(clean);
+    return url.searchParams.get("equip") || url.searchParams.get("id") || "";
+  }catch(_){ return ""; }
 }
 function findEquipmentByCode(code){
   const clean=String(code||"").trim();
   if(!clean) return null;
-  try{
-    const url = new URL(clean);
-    const equip = url.searchParams.get("equip") || url.searchParams.get("id");
-    if(equip) return state.equipamentos.find(x=>x.id===equip) || null;
-  }catch(_){}
+  const equipId = extractEquipIdFromCode(clean);
+  if(equipId) return state.equipamentos.find(x=>x.id===equipId) || { id:equipId, __needsFetch:true };
   return state.equipamentos.find(e=>[e.id,e.patrimonio,e.numeroSerie,e.imei,e.hostname].some(v=>String(v||"").trim()===clean)) || null;
 }
 function openEquipmentFromUrlIfNeeded(){
   const id = new URLSearchParams(location.search).get("equip");
   if(id && state.equipamentos.length && !state.pendingEquipId){
     state.pendingEquipId = id;
-    setTimeout(()=>openEquipmentById(id), 300);
+    setTimeout(()=>openEquipmentById(id, "Equipamento aberto pelo QR Code"), 300);
   }
 }
 async function startQrScanner(){
@@ -197,7 +245,8 @@ async function startQrScanner(){
       const item = findEquipmentByCode(decodedText);
       if(item){
         await stopQrScanner();
-        openEquipmentById(item.id);
+        const opened = await openEquipmentById(item.id, "Equipamento localizado pelo QR Code");
+        if(!opened) msg.textContent="QR Code lido, mas equipamento não encontrado no Firebase: " + decodedText;
       } else {
         msg.textContent="QR Code lido, mas equipamento não encontrado: " + decodedText;
       }
@@ -221,14 +270,25 @@ async function loadUsers(){ const snap=await getDocs(collection(state.db,"usuari
 function renderUsers(){ $("usersList").innerHTML = state.usuarios.map(u=>`<div class="user-row"><div><b>${esc(u.nome||u.email)}</b><small>${esc(u.email||"")}</small></div><select data-role-user="${u.id}"><option value="admin" ${u.nivel==="admin"?"selected":""}>Administrador</option><option value="tecnico" ${u.nivel==="tecnico"?"selected":""}>Técnico TI</option><option value="consulta" ${!u.nivel||u.nivel==="consulta"?"selected":""}>Consulta</option></select><button class="btn secondary small" data-save-role="${u.id}">Salvar</button></div>`).join("") || "<p>Nenhum usuário encontrado.</p>"; }
 async function saveRole(uid){ if(!canAdmin()) return; const sel=document.querySelector(`[data-role-user="${uid}"]`); await updateDoc(doc(state.db,"usuarios",uid), {nivel:sel.value, atualizadoEm:serverTimestamp(), atualizadoPor:state.user?.email||""}); toast("Permissão atualizada"); await loadUsers(); }
 function download(name, content, type){ const blob=new Blob([content],{type}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
-function showView(view){ if((view==="usuarios"||view==="config")&&!canAdmin()) return toast("Apenas administrador."); document.querySelectorAll(".view").forEach(v=>v.classList.add("hidden")); $(`view-${view}`).classList.remove("hidden"); document.querySelectorAll(".sidebar nav a").forEach(a=>a.classList.toggle("active", a.dataset.view===view)); $("pageTitle").textContent = {dashboard:"Dashboard", equipamentos:"Equipamentos", cadastro:"Cadastro", qrscanner:"Escanear QR Code", movimentacoes:"Histórico", usuarios:"Usuários", config:"Configurações"}[view]; if(view==="usuarios") loadUsers(); }
+function showView(view){ if((view==="usuarios"||view==="config")&&!canAdmin()) return toast("Apenas administrador."); document.querySelectorAll(".view").forEach(v=>v.classList.add("hidden")); $(`view-${view}`).classList.remove("hidden"); document.querySelectorAll(".sidebar nav a").forEach(a=>a.classList.toggle("active", a.dataset.view===view)); $("pageTitle").textContent = {dashboard:"Dashboard", equipamentos:"Equipamentos", detalhe:"Detalhes do equipamento", cadastro:"Cadastro", qrscanner:"Escanear QR Code", movimentacoes:"Histórico", usuarios:"Usuários", config:"Configurações"}[view]; if(view==="usuarios") loadUsers(); }
 function esc(s){ return String(s??"").replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
 function pillClass(s){ return String(s||"Ativo").split(" ")[0]; }
 async function compressImage(file){ return new Promise((resolve,reject)=>{ const reader=new FileReader(); reader.onload=()=>{ const img=new Image(); img.onload=()=>{ const canvas=document.createElement("canvas"); const max=900; let w=img.width,h=img.height; if(w>h && w>max){h=Math.round(h*max/w); w=max;} else if(h>max){w=Math.round(w*max/h); h=max;} canvas.width=w; canvas.height=h; canvas.getContext("2d").drawImage(img,0,0,w,h); resolve(canvas.toDataURL("image/jpeg",.78)); }; img.onerror=reject; img.src=reader.result; }; reader.onerror=reject; reader.readAsDataURL(file); }); }
 
-document.addEventListener("click", async (e)=>{ const edit=e.target.dataset?.edit, del=e.target.dataset?.del, saveRoleId=e.target.dataset?.saveRole; if(edit){ const item=state.equipamentos.find(x=>x.id===edit); setFormData(item); showView("cadastro"); } if(del && canAdmin() && confirm("Excluir este equipamento?")){ const item=state.equipamentos.find(x=>x.id===del)||{}; await deleteDoc(doc(state.db,"equipamentos",del)); await addDoc(collection(state.db,"movimentacoes"), {equipamentoId:del, patrimonio:item.patrimonio||"", serie:item.numeroSerie||item.imei||"", acao:"Exclusão", alteracoes:["Equipamento excluído"], usuario:state.user?.email||"", data:serverTimestamp()}); await loadEquipamentos(); await loadHistory(); toast("Equipamento excluído"); } if(saveRoleId) await saveRole(saveRoleId); });
+document.addEventListener("click", async (e)=>{
+  const viewEquip=e.target.closest("[data-view-equip]")?.dataset?.viewEquip;
+  const edit=e.target.closest("[data-edit]")?.dataset?.edit;
+  const del=e.target.closest("[data-del]")?.dataset?.del;
+  const saveRoleId=e.target.dataset?.saveRole;
+  if(viewEquip && !edit && !del){ await openEquipmentById(viewEquip); return; }
+  if(edit){ const item=state.equipamentos.find(x=>x.id===edit); setFormData(item); showView("cadastro"); return; }
+  if(del && canAdmin() && confirm("Excluir este equipamento?")){ const item=state.equipamentos.find(x=>x.id===del)||{}; await deleteDoc(doc(state.db,"equipamentos",del)); await addDoc(collection(state.db,"movimentacoes"), {equipamentoId:del, patrimonio:item.patrimonio||"", serie:item.numeroSerie||item.imei||"", acao:"Exclusão", alteracoes:["Equipamento excluído"], usuario:state.user?.email||"", data:serverTimestamp()}); await loadEquipamentos(); await loadHistory(); toast("Equipamento excluído"); return; }
+  if(saveRoleId) await saveRole(saveRoleId);
+});
 document.querySelectorAll(".sidebar nav a").forEach(a=>a.addEventListener("click",ev=>{ev.preventDefault(); showView(a.dataset.view);}));
 $("loginBtn").onclick=login; $("createUserBtn").onclick=createUser; $("logoutBtn").onclick=()=>signOut(state.auth);
+$("backToListBtn").onclick=()=>showView("equipamentos");
+$("editDetailBtn").onclick=()=>{ const item=state.equipamentos.find(x=>x.id===state.currentDetailId); if(item){ setFormData(item); showView("cadastro"); } };
 $("equipForm").onsubmit=saveEquip; $("clearFormBtn").onclick=()=>setFormData(); $("openNewBtn").onclick=()=>{setFormData(); showView("cadastro");};
 $("seedBtn").onclick=seedInitial; $("exportBtn").onclick=exportCSV; $("backupJsonBtn").onclick=backupJSON; $("deleteAllBtn").onclick=deleteAll; $("downloadModelBtn").onclick=downloadExcelModel; $("startQrBtn").onclick=startQrScanner; $("stopQrBtn").onclick=stopQrScanner;
 $("importJsonInput").onchange=(e)=>e.target.files[0]&&importJSON(e.target.files[0]).catch(err=>toast("Erro ao importar: "+errorText(err)));

@@ -1,8 +1,8 @@
-const firebaseConfig = {
-  apiKey: "AIzaSyA4aUSj_O-6fqJTFp3iLh_xTEXOpl9CzLo",
-  authDomain: "equipamentos-sesi.firebaseapp.com",
-  projectId: "equipamentos-sesi",
-  storageBucket: "equipamentos-sesi.firebasestorage.app",
-  messagingSenderId: "1058448519996",
-  appId: "1:1058448519996:web:21d0388c081a593c386439"
+window.firebaseConfig = {
+  apiKey: "AIzaSyDrdZqpaaZ9sQ9H3v3L9j51FDiFF-Q77LY",
+  authDomain: "tecsesi.firebaseapp.com",
+  projectId: "tecsesi",
+  storageBucket: "tecsesi.firebasestorage.app",
+  messagingSenderId: "991854103126",
+  appId: "1:991854103126:web:7288a2417a544e0ecc09f7"
 };

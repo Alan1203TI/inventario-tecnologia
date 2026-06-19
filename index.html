@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=21" />
 </head>
 <body>
   <div id="toast" class="toast"></div>
@@ -46,9 +46,8 @@
       <nav>
         <a href="#dashboard" class="active" data-view="dashboard">Dashboard</a>
         <a href="#equipamentos" data-view="equipamentos">Equipamentos</a>
+        <a href="#qrscanner" data-view="qrscanner">Escanear QR Code</a>
         <a href="#cadastro" data-view="cadastro" data-edit-only="true">Novo cadastro</a>
-        <a href="#importacao" data-view="importacao" data-admin-only="true">Importar Excel</a>
-        <a href="#scanner" data-view="scanner">Escanear QR</a>
         <a href="#movimentacoes" data-view="movimentacoes">Histórico</a>
         <a href="#usuarios" data-view="usuarios" data-admin-only="true">Usuários</a>
         <a href="#config" data-view="config" data-admin-only="true">Configurações</a>
@@ -121,54 +120,46 @@
           <h3 id="formTitle">Novo equipamento</h3>
           <form id="equipForm" class="form-grid">
             <input type="hidden" id="editId">
-            <label>Tipo<select id="tipo" required><option>Tablet</option><option>Smartphone</option><option>Notebook</option><option>Computador</option><option>Monitor</option><option>Impressora</option><option>Outro</option></select></label>
-            <label>Categoria<input id="categoria" list="listaCategoria" placeholder="ADM, Educacional, A9+, T500..."></label>
-            <label>Modelo<input id="modelo" list="listaModelo" placeholder="Modelo"></label>
+            <label>Tipo<input id="tipo" list="tipoOptions" required placeholder="Tablet, Notebook, Computador..."></label>
+            <label>Categoria<input id="categoria" list="categoriaOptions" placeholder="ADM, Educacional, A9+, T500..."></label>
+            <label>Modelo<input id="modelo" list="modeloOptions" placeholder="Modelo"></label>
             <label>Nº de série<input id="numeroSerie" placeholder="Número de série"></label>
             <label>Patrimônio<input id="patrimonio" placeholder="Patrimônio"></label>
             <label>IMEI<input id="imei" placeholder="IMEI, se houver"></label>
             <label>Hostname<input id="hostname" placeholder="Nome do computador"></label>
-            <label>Local<input id="local" list="listaLocal" placeholder="Sala, setor, laboratório"></label>
-            <label>Etiqueta<input id="etiqueta" list="listaEtiqueta" placeholder="Etiqueta/identificação"></label>
-            <label>Responsável<input id="responsavel" list="listaResponsavel" placeholder="Usuário/responsável"></label>
-            <label>Status<input id="status" list="listaStatus" placeholder="Ativo, Reserva, Em manutenção..."></label>
-            <label>Origem<input id="origem" list="listaOrigem" placeholder="Planilha de origem"></label>
+            <label>Local<input id="local" list="localOptions" placeholder="Sala, setor, laboratório"></label>
+            <label>Etiqueta<input id="etiqueta" placeholder="Etiqueta/identificação"></label>
+            <label>Responsável<input id="responsavel" list="responsavelOptions" placeholder="Usuário/responsável"></label>
+            <label>Status<input id="status" list="statusOptions" placeholder="Ativo, Reserva, Em manutenção..."></label>
+            <label>Origem<input id="origem" list="origemOptions" placeholder="Planilha de origem"></label>
             <label>Foto do equipamento<input id="fotoInput" type="file" accept="image/*"></label>
             <label>URL da foto<input id="fotoUrl" placeholder="Foto salva automaticamente ou cole uma URL"></label>
             <label class="full-span">Observação<textarea id="observacao" placeholder="Observações"></textarea></label>
             <div class="full-span photo-preview-wrap"><img id="photoPreview" alt="Prévia da foto" class="photo-preview hidden"><div id="qrBox" class="qr-box hidden"></div></div>
             <div class="full-span form-actions"><button type="submit" class="btn primary">Salvar equipamento</button><button type="button" id="clearFormBtn" class="btn secondary">Limpar</button></div>
-            <datalist id="listaCategoria"></datalist><datalist id="listaModelo"></datalist><datalist id="listaLocal"></datalist><datalist id="listaEtiqueta"></datalist><datalist id="listaResponsavel"></datalist><datalist id="listaStatus"></datalist><datalist id="listaOrigem"></datalist>
           </form>
+
+          <datalist id="tipoOptions"></datalist>
+          <datalist id="categoriaOptions"></datalist>
+          <datalist id="modeloOptions"></datalist>
+          <datalist id="localOptions"></datalist>
+          <datalist id="responsavelOptions"></datalist>
+          <datalist id="statusOptions"></datalist>
+          <datalist id="origemOptions"></datalist>
         </div>
       </section>
 
 
-      <section id="view-importacao" class="view hidden">
-        <div class="card">
-          <h3>Importar equipamentos em massa por Excel</h3>
-          <p class="muted">Envie uma planilha .xlsx, .xls ou .csv. O sistema identifica colunas como Tipo, Categoria, Modelo, Nº de série, Patrimônio, Local, Responsável e Status.</p>
-          <div class="import-box">
-            <label class="file-label">Selecionar planilha Excel<input type="file" id="importExcelInput" accept=".xlsx,.xls,.csv"></label>
-            <button id="downloadModeloExcelBtn" class="btn secondary">Baixar modelo CSV</button>
-          </div>
-          <div id="importExcelStatus" class="import-status">Nenhum arquivo selecionado.</div>
-          <div class="small muted">Dica: para evitar duplicidade, confira antes se Patrimônio ou Nº de série já não estão cadastrados.</div>
-        </div>
-      </section>
-
-      <section id="view-scanner" class="view hidden">
+      <section id="view-qrscanner" class="view hidden">
         <div class="card">
           <h3>Escanear QR Code do equipamento</h3>
-          <p class="muted">Aponte a câmera para o QR Code colado no equipamento. O sistema abre o cadastro correspondente automaticamente.</p>
-          <div class="scanner-actions">
-            <button id="startScannerBtn" class="btn primary">Iniciar câmera</button>
-            <button id="stopScannerBtn" class="btn secondary">Parar câmera</button>
-            <input id="manualQrInput" placeholder="Ou digite patrimônio, série ou cole o texto do QR Code">
-            <button id="manualQrBtn" class="btn secondary">Buscar</button>
+          <p class="muted">Use a câmera do celular ou notebook para ler a etiqueta QR Code colada no equipamento. Ao identificar, o sistema abre o cadastro do equipamento automaticamente.</p>
+          <div class="qr-actions">
+            <button id="startQrBtn" class="btn primary">Iniciar câmera</button>
+            <button id="stopQrBtn" class="btn secondary">Parar câmera</button>
           </div>
           <div id="qrReader" class="qr-reader"></div>
-          <p id="scannerMsg" class="muted"></p>
+          <p id="qrScanMsg" class="muted"></p>
         </div>
       </section>
 
@@ -185,17 +176,32 @@
       <section id="view-config" class="view hidden">
         <div class="card">
           <h3>Configurações e backup</h3>
-          <p>Use “Enviar dados iniciais” apenas uma vez, após configurar o Firebase.</p>
-          <div class="config-actions"><button id="seedBtn" class="btn warning">Enviar dados iniciais</button><button id="backupJsonBtn" class="btn secondary">Baixar backup JSON</button><label class="file-label">Importar backup JSON<input type="file" id="importJsonInput" accept=".json"></label><button id="deleteAllBtn" class="btn danger">Apagar todos os equipamentos</button></div>
+          <p>Use “Enviar dados iniciais” apenas uma vez, após configurar o Firebase. Esta área fica visível apenas para Administrador.</p>
+          <div class="config-actions">
+            <button id="seedBtn" class="btn warning">Enviar dados iniciais</button>
+            <button id="backupJsonBtn" class="btn secondary">Baixar backup JSON</button>
+            <label class="file-label">Importar backup JSON<input type="file" id="importJsonInput" accept=".json"></label>
+            <button id="deleteAllBtn" class="btn danger">Apagar todos os equipamentos</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Importar equipamentos em massa por Excel</h3>
+          <p class="muted">Envie uma planilha .xlsx, .xls ou .csv. O sistema reconhece colunas como Tipo, Categoria, Modelo, Nº de série, Patrimônio, IMEI, Hostname, Local, Etiqueta, Responsável, Status, Origem e Observação.</p>
+          <div class="config-actions">
+            <label class="file-label">Selecionar Excel<input type="file" id="importExcelInput" accept=".xlsx,.xls,.csv"></label>
+            <button id="downloadModelBtn" class="btn secondary">Baixar modelo CSV</button>
+          </div>
+          <p id="excelImportMsg" class="small muted"></p>
         </div>
       </section>
     </section>
   </main>
 
+  <script src="firebase-config.js?v=20"></script>
+  <script src="dados-iniciais.js?v=20"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <script src="firebase-config.js?v=31"></script>
-  <script src="dados-iniciais.js?v=31"></script>
-  <script type="module" src="app.js?v=31"></script>
+  <script type="module" src="app.js?v=21"></script>
 </body>
 </html>

@@ -1,0 +1,85 @@
+SISTEMA INVENTÁRIO SESI DOM BOSCO - FIREBASE + GITHUB PAGES
+
+VERSÃO COM ALTERAÇÕES:
+- Logo SESI no login e no sistema.
+- Foto da unidade como fundo da tela de login e banner do dashboard.
+- Dashboard com total, tablets, notebooks, computadores, smartphones, manutenção, reserva e baixados.
+- Níveis de acesso: Administrador, Técnico TI e Consulta.
+- Tela de usuários para administrador alterar permissões.
+- Histórico de alterações com usuário, ação e campos alterados.
+- Cadastro/edição com foto do equipamento.
+- QR Code automático por patrimônio/série/local.
+- Exportação CSV/Excel.
+- Backup JSON.
+- Dados iniciais das planilhas já no arquivo dados-iniciais.js.
+
+COMO ATUALIZAR NO GITHUB
+1. Extraia este ZIP.
+2. Abra a pasta inventario_sesi_firebase_v10_final.
+3. Envie TODOS os arquivos para o repositório GitHub:
+   - index.html
+   - style.css
+   - app.js
+   - dados-iniciais.js
+   - firebase-config.js
+   - logo-sesi.png
+   - unidade-sesi.png
+   - REGRAS-FIRESTORE.txt
+   - LEIA-ME-PASSO-A-PASSO.txt
+4. Aguarde o GitHub Pages atualizar.
+5. Abra o site e aperte Ctrl + F5.
+
+CONFIGURAÇÃO DO FIREBASE
+O arquivo firebase-config.js já está configurado para o projeto:
+tecsesi
+
+Se criar outro projeto, substitua o conteúdo do firebase-config.js por:
+
+window.firebaseConfig = {
+  apiKey: "SUA_API_KEY",
+  authDomain: "SEU_PROJETO.firebaseapp.com",
+  projectId: "SEU_PROJETO",
+  storageBucket: "SEU_PROJETO.firebasestorage.app",
+  messagingSenderId: "SEU_ID",
+  appId: "SEU_APP_ID"
+};
+
+NO FIREBASE, CONFIRA:
+1. Authentication > Sign-in method > E-mail/senha ativado.
+2. Authentication > Settings > Authorized domains:
+   alan1203ti.github.io
+3. Firestore Database criado.
+4. Firestore Rules: copie o conteúdo do arquivo REGRAS-FIRESTORE.txt.
+
+PRIMEIRO ACESSO
+1. Abra o sistema.
+2. Clique em Criar usuário com seu e-mail.
+3. O primeiro usuário criado vira Administrador automaticamente.
+4. Usuários criados depois entram como Consulta.
+5. O Administrador pode mudar permissões em Usuários.
+
+IMPORTAR AS PLANILHAS INICIAIS
+1. Entre como Administrador.
+2. Clique em Enviar dados iniciais.
+3. Confirme.
+4. Os equipamentos serão gravados no Firestore.
+5. Use apenas uma vez para não duplicar.
+
+NÍVEIS DE ACESSO
+Administrador:
+- Cadastra, edita, exclui, importa dados, apaga tudo, altera usuários.
+
+Técnico TI:
+- Cadastra e edita equipamentos.
+- Não exclui e não altera usuários.
+
+Consulta:
+- Apenas pesquisa, visualiza e exporta.
+
+IMPORTANTE
+O que qualquer usuário alterar no sistema é salvo no Firebase e aparece para todos os computadores/celulares que acessarem o sistema.
+
+Se aparecer algo estranho após atualizar o GitHub:
+- Aperte Ctrl + F5.
+- Teste em aba anônima.
+- Confirme se o GitHub atualizou os arquivos.

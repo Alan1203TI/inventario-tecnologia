@@ -52,7 +52,7 @@ function applyPermissions(){
 }
 async function login(){ $("loginMsg").textContent=""; if(!state.auth){ $("loginMsg").textContent="Firebase não carregou. Confira firebase-config.js e atualize com Ctrl+F5."; return; } try{ await signInWithEmailAndPassword(state.auth, $("email").value.trim(), $("password").value); } catch(e){ $("loginMsg").textContent = "Erro ao entrar: " + errorText(e); } }
 async function createUser(){ $("loginMsg").textContent=""; if(!state.auth){ $("loginMsg").textContent="Firebase não carregou. Confira firebase-config.js e atualize com Ctrl+F5."; return; } try{ await createUserWithEmailAndPassword(state.auth, $("email").value.trim(), $("password").value); toast("Usuário criado com sucesso"); } catch(e){ $("loginMsg").textContent = "Erro ao criar usuário: " + errorText(e); } }
-async function loadEquipamentos(){ const snap = await getDocs(collection(state.db, "equipamentos")); state.equipamentos = snap.docs.map(d=>({id:d.id, ...d.data()})); state.equipamentos.sort((a,b)=>(a.tipo||"").localeCompare(b.tipo||"") || (a.local||"").localeCompare(b.local||"")); fillFilters(); fillSmartLists(); populateBulkStatusControls(); applyFilters(); renderDashboard(); openEquipmentFromUrlIfNeeded(); }
+async function loadEquipamentos(){ const snap = await getDocs(collection(state.db, "equipamentos")); state.equipamentos = snap.docs.map(d=>({id:d.id, ...d.data()})); state.equipamentos.sort((a,b)=>(a.tipo||"").localeCompare(b.tipo||"") || (a.local||"").localeCompare(b.local||"")); fillFilters(); fillSmartLists(); populateBulkStatusControls(); populateQrPdfControls(); applyFilters(); renderDashboard(); openEquipmentFromUrlIfNeeded(); }
 function fillFilters(){ fillSelect("filterTipo", [...new Set(state.equipamentos.map(x=>x.tipo).filter(Boolean))].sort()); fillSelect("filterStatus", [...new Set(state.equipamentos.map(x=>x.status).filter(Boolean))].sort()); fillSelect("filterLocal", [...new Set(state.equipamentos.map(x=>x.local).filter(Boolean))].sort()); }
 function fillSelect(id, values){ const el=$(id), current=el.value, first=el.options[0].textContent; el.innerHTML = `<option value="">${first}</option>` + values.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join(""); el.value = current; }
 
@@ -336,6 +336,113 @@ async function stopQrScanner(){
     if(msg) msg.textContent="Câmera parada.";
   }
 }
+
+function populateQrPdfControls(){
+  const select = $("qrPdfTipoSelect");
+  if(!select) return;
+  const current = select.value;
+  const tipos = uniqueSorted("tipo");
+  select.innerHTML = '<option value="">Selecione o tipo</option>' + tipos.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
+  if(tipos.includes(current)) select.value = current;
+}
+function getQrPdfItems(){
+  const tipo = $("qrPdfTipoSelect")?.value || "";
+  const order = $("qrPdfOrderSelect")?.value || "patrimonio";
+  const items = state.equipamentos
+    .filter(e=>String(e.tipo||"").trim() === tipo)
+    .slice()
+    .sort((a,b)=>String(a[order]||"").localeCompare(String(b[order]||""), "pt-BR", {numeric:true}) || String(a.patrimonio||"").localeCompare(String(b.patrimonio||""), "pt-BR", {numeric:true}));
+  return {tipo, order, items};
+}
+function renderQrPdfPreview(){
+  const msg = $("qrPdfMsg"), list = $("qrPdfPreviewList");
+  if(!msg || !list) return;
+  const {tipo, items} = getQrPdfItems();
+  if(!tipo){ msg.textContent = "Selecione um tipo de equipamento."; list.classList.add("hidden"); list.innerHTML = ""; return; }
+  msg.textContent = `${items.length} equipamento(s) do tipo ${tipo} serão incluídos no PDF.`;
+  list.classList.toggle("hidden", !items.length);
+  list.innerHTML = items.slice(0,80).map(e=>`<div><b>${esc(e.patrimonio || e.hostname || e.numeroSerie || e.imei || "Sem identificação")}</b><span>${esc(e.hostname || "Sem hostname")} · Série: ${esc(e.numeroSerie || e.imei || "Não informado")} · Local: ${esc(e.local || "")}</span></div>`).join("") + (items.length>80 ? `<div><b>+ ${items.length-80} equipamento(s)</b><span>Lista resumida para manter a tela leve.</span></div>` : "");
+}
+function sanitizeFileName(s){
+  return String(s||"equipamentos").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9_-]+/g,"_").replace(/^_+|_+$/g,"").toLowerCase() || "equipamentos";
+}
+function getQrPayload(e){
+  return e.id ? `${location.origin}${location.pathname}?equip=${encodeURIComponent(e.id)}` : (e.patrimonio || e.numeroSerie || e.imei || e.hostname || "");
+}
+async function makeQrDataUrl(text){
+  if(window.QRCode?.toDataURL){
+    return await window.QRCode.toDataURL(text, {errorCorrectionLevel:"M", margin:1, width:220});
+  }
+  return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(text)}`;
+}
+async function generateQrPdf(){
+  if(!canAdmin()) return toast("Apenas administrador.");
+  const msg = $("qrPdfMsg");
+  const {tipo, items} = getQrPdfItems();
+  const size = $("qrPdfSizeSelect")?.value || "medium";
+  if(!tipo){ if(msg) msg.textContent = "Selecione o tipo de equipamento."; return; }
+  if(!items.length){ if(msg) msg.textContent = "Nenhum equipamento encontrado para esse tipo."; return; }
+  if(!window.jspdf?.jsPDF){ if(msg) msg.textContent = "Biblioteca de PDF não carregou. Verifique a internet e atualize a página."; return; }
+  if(msg) msg.textContent = `Gerando PDF com ${items.length} etiqueta(s)...`;
+  const { jsPDF } = window.jspdf;
+  const docPdf = new jsPDF({orientation:"portrait", unit:"mm", format:"a4"});
+  const pageW = docPdf.internal.pageSize.getWidth();
+  const pageH = docPdf.internal.pageSize.getHeight();
+  const margin = 8;
+  const gap = 4;
+  const layouts = {
+    small:{cols:3, rows:8, qr:20, fontTitle:8, fontText:6.5},
+    medium:{cols:2, rows:6, qr:26, fontTitle:9, fontText:7.5},
+    large:{cols:1, rows:5, qr:30, fontTitle:11, fontText:9}
+  };
+  const layout = layouts[size] || layouts.medium;
+  const labelW = (pageW - margin*2 - gap*(layout.cols-1)) / layout.cols;
+  const labelH = (pageH - margin*2 - gap*(layout.rows-1)) / layout.rows;
+  let index = 0;
+  docPdf.setProperties({title:`QR Codes - ${tipo}`, subject:"Etiquetas de inventário SESI"});
+  for(const e of items){
+    if(index > 0 && index % (layout.cols*layout.rows) === 0) docPdf.addPage();
+    const pos = index % (layout.cols*layout.rows);
+    const col = pos % layout.cols;
+    const row = Math.floor(pos / layout.cols);
+    const x = margin + col*(labelW + gap);
+    const y = margin + row*(labelH + gap);
+    const payload = getQrPayload(e);
+    const qrUrl = await makeQrDataUrl(payload || `${e.patrimonio || e.hostname || e.numeroSerie || "equipamento"}`);
+    docPdf.setDrawColor(210, 220, 235);
+    docPdf.roundedRect(x, y, labelW, labelH, 2, 2);
+    const qrX = x + 3;
+    const qrY = y + (labelH - layout.qr) / 2;
+    docPdf.addImage(qrUrl, "PNG", qrX, qrY, layout.qr, layout.qr);
+    const tx = qrX + layout.qr + 3;
+    const maxTextW = labelW - layout.qr - 9;
+    docPdf.setTextColor(15, 42, 82);
+    docPdf.setFont("helvetica", "bold");
+    docPdf.setFontSize(layout.fontTitle);
+    docPdf.text(docPdf.splitTextToSize(e.patrimonio ? `Patrimônio: ${e.patrimonio}` : "Patrimônio: não informado", maxTextW), tx, y + 8);
+    docPdf.setFont("helvetica", "normal");
+    docPdf.setTextColor(30, 45, 65);
+    docPdf.setFontSize(layout.fontText);
+    const lines = [
+      `Hostname: ${e.hostname || "não informado"}`,
+      `Nº série: ${e.numeroSerie || e.imei || "não informado"}`,
+      `Tipo: ${e.tipo || ""}`,
+      `Local: ${e.local || ""}`
+    ];
+    let ty = y + (size === "large" ? 17 : 16);
+    for(const line of lines){
+      const split = docPdf.splitTextToSize(line, maxTextW);
+      docPdf.text(split.slice(0,2), tx, ty);
+      ty += split.length > 1 ? layout.fontText*0.9 : layout.fontText*0.55;
+      if(ty > y + labelH - 3) break;
+    }
+    index++;
+  }
+  docPdf.save(`qr_codes_${sanitizeFileName(tipo)}.pdf`);
+  if(msg) msg.textContent = `PDF gerado com ${items.length} etiqueta(s) do tipo ${tipo}.`;
+  toast("PDF de QR Codes gerado");
+}
+
 function exportCSV(){ const headers=["tipo","categoria","modelo","numeroSerie","patrimonio","imei","hostname","local","etiqueta","responsavel","status","origem","fotoUrl","observacao"]; const lines=[headers.join(";")].concat(state.filtered.map(e=>headers.map(h=>`"${String(e[h]||"").replaceAll('"','""')}"`).join(";"))); download("inventario_sesi.csv", "\ufeff"+lines.join("\n"), "text/csv;charset=utf-8"); }
 function backupJSON(){ download("backup_inventario_sesi.json", JSON.stringify(state.equipamentos,null,2), "application/json"); }
 async function importJSON(file){ if(!canAdmin()) return toast("Apenas administrador."); const text=await file.text(); const arr=JSON.parse(text); if(!Array.isArray(arr)) throw new Error("Arquivo inválido"); if(!confirm(`Importar ${arr.length} equipamentos para o Firebase?`)) return; for(let i=0;i<arr.length;i+=450){ const batch=writeBatch(state.db); arr.slice(i,i+450).forEach(item=>{ const ref=doc(collection(state.db,"equipamentos")); const {id,...data}=item; batch.set(ref,{...data, atualizadoEm:serverTimestamp(), atualizadoPor:state.user?.email||""}); }); await batch.commit(); } await loadEquipamentos(); toast("Backup importado"); }
@@ -364,7 +471,7 @@ $("loginBtn").onclick=login; $("createUserBtn").onclick=createUser; $("logoutBtn
 $("backToListBtn").onclick=()=>showView("equipamentos");
 $("editDetailBtn").onclick=()=>{ const item=state.equipamentos.find(x=>x.id===state.currentDetailId); if(item){ setFormData(item); showView("cadastro"); } };
 $("equipForm").onsubmit=saveEquip; $("clearFormBtn").onclick=()=>setFormData(); $("openNewBtn").onclick=()=>{setFormData(); showView("cadastro");};
-$("seedBtn").onclick=seedInitial; $("bulkPreviewBtn").onclick=renderBulkPreview; $("bulkApplyStatusBtn").onclick=applyBulkStatusByLocal; $("bulkLocalSelect").onchange=renderBulkPreview; $("bulkStatusSelect").onchange=renderBulkPreview; $("exportBtn").onclick=exportCSV; $("backupJsonBtn").onclick=backupJSON; $("deleteAllBtn").onclick=deleteAll; $("downloadModelBtn").onclick=downloadExcelModel; $("startQrBtn").onclick=startQrScanner; $("stopQrBtn").onclick=stopQrScanner;
+$("seedBtn").onclick=seedInitial; $("qrPdfPreviewBtn").onclick=renderQrPdfPreview; $("generateQrPdfBtn").onclick=generateQrPdf; $("qrPdfTipoSelect").onchange=renderQrPdfPreview; $("qrPdfOrderSelect").onchange=renderQrPdfPreview; $("qrPdfSizeSelect").onchange=renderQrPdfPreview; $("bulkPreviewBtn").onclick=renderBulkPreview; $("bulkApplyStatusBtn").onclick=applyBulkStatusByLocal; $("bulkLocalSelect").onchange=renderBulkPreview; $("bulkStatusSelect").onchange=renderBulkPreview; $("exportBtn").onclick=exportCSV; $("backupJsonBtn").onclick=backupJSON; $("deleteAllBtn").onclick=deleteAll; $("downloadModelBtn").onclick=downloadExcelModel; $("startQrBtn").onclick=startQrScanner; $("stopQrBtn").onclick=stopQrScanner;
 $("importJsonInput").onchange=(e)=>e.target.files[0]&&importJSON(e.target.files[0]).catch(err=>toast("Erro ao importar: "+errorText(err)));
 $("importExcelInput").onchange=(e)=>e.target.files[0]&&importExcel(e.target.files[0]).catch(err=>{ $("excelImportMsg").textContent="Erro ao importar Excel: "+errorText(err); toast("Erro ao importar Excel"); });
 $("fotoInput").onchange=async(e)=>{ const file=e.target.files?.[0]; if(!file) return; try{ $("fotoUrl").value=await compressImage(file); renderPhotoAndQr(getFormData()); toast("Foto carregada no cadastro"); }catch(err){ toast("Erro ao carregar foto: "+errorText(err)); } };

@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=24" />
+  <link rel="stylesheet" href="style.css?v=25" />
 </head>
 <body>
   <div id="toast" class="toast"></div>
@@ -205,6 +205,39 @@
 
 
         <div class="card">
+          <h3>Gerar etiquetas com QR Code em PDF</h3>
+          <p class="muted">Selecione o tipo de equipamento para gerar um PDF com QR Code, patrimônio, hostname e número de série. O arquivo fica pronto para imprimir, recortar e colar nos equipamentos.</p>
+          <div class="form-grid compact-form">
+            <label>Tipo de equipamento
+              <select id="qrPdfTipoSelect">
+                <option value="">Selecione o tipo</option>
+              </select>
+            </label>
+            <label>Ordenar por
+              <select id="qrPdfOrderSelect">
+                <option value="patrimonio">Patrimônio</option>
+                <option value="hostname">Hostname</option>
+                <option value="numeroSerie">Nº de série</option>
+                <option value="local">Local</option>
+              </select>
+            </label>
+            <label>Tamanho da etiqueta
+              <select id="qrPdfSizeSelect">
+                <option value="small">Pequena - 3 colunas</option>
+                <option value="medium" selected>Média - 2 colunas</option>
+                <option value="large">Grande - 1 coluna</option>
+              </select>
+            </label>
+          </div>
+          <div class="config-actions">
+            <button id="qrPdfPreviewBtn" class="btn secondary">Conferir quantidade</button>
+            <button id="generateQrPdfBtn" class="btn primary">Gerar PDF de QR Codes</button>
+          </div>
+          <p id="qrPdfMsg" class="small muted"></p>
+          <div id="qrPdfPreviewList" class="bulk-preview hidden"></div>
+        </div>
+
+        <div class="card">
           <h3>Alterar status por local</h3>
           <p class="muted">Selecione um local e aplique um novo status para todos os equipamentos cadastrados nesse local. A alteração será registrada no histórico.</p>
           <div class="form-grid compact-form">
@@ -247,6 +280,8 @@
   <script src="dados-iniciais.js?v=20"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <script type="module" src="app.js?v=24"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script type="module" src="app.js?v=25"></script>
 </body>
 </html>

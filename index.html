@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=23" />
+  <link rel="stylesheet" href="style.css?v=24" />
 </head>
 <body>
   <div id="toast" class="toast"></div>
@@ -202,6 +202,34 @@
           </div>
         </div>
 
+
+
+        <div class="card">
+          <h3>Alterar status por local</h3>
+          <p class="muted">Selecione um local e aplique um novo status para todos os equipamentos cadastrados nesse local. A alteração será registrada no histórico.</p>
+          <div class="form-grid compact-form">
+            <label>Local
+              <select id="bulkLocalSelect">
+                <option value="">Selecione o local</option>
+              </select>
+            </label>
+            <label>Novo status
+              <select id="bulkStatusSelect">
+                <option value="">Selecione o status</option>
+              </select>
+            </label>
+            <label class="full-span">Observação da alteração
+              <input id="bulkStatusObs" placeholder="Ex.: conferência, manutenção, reserva, baixa...">
+            </label>
+          </div>
+          <div class="config-actions">
+            <button id="bulkPreviewBtn" class="btn secondary">Conferir equipamentos</button>
+            <button id="bulkApplyStatusBtn" class="btn warning">Alterar status do local</button>
+          </div>
+          <p id="bulkStatusMsg" class="small muted"></p>
+          <div id="bulkPreviewList" class="bulk-preview hidden"></div>
+        </div>
+
         <div class="card">
           <h3>Importar equipamentos em massa por Excel</h3>
           <p class="muted">Envie uma planilha .xlsx, .xls ou .csv. O sistema reconhece colunas como Tipo, Categoria, Modelo, Nº de série, Patrimônio, IMEI, Hostname, Local, Etiqueta, Responsável, Status, Origem e Observação.</p>
@@ -219,6 +247,6 @@
   <script src="dados-iniciais.js?v=20"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <script type="module" src="app.js?v=23"></script>
+  <script type="module" src="app.js?v=24"></script>
 </body>
 </html>

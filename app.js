@@ -52,7 +52,7 @@ function applyPermissions(){
 }
 async function login(){ $("loginMsg").textContent=""; if(!state.auth){ $("loginMsg").textContent="Firebase não carregou. Confira firebase-config.js e atualize com Ctrl+F5."; return; } try{ await signInWithEmailAndPassword(state.auth, $("email").value.trim(), $("password").value); } catch(e){ $("loginMsg").textContent = "Erro ao entrar: " + errorText(e); } }
 async function createUser(){ $("loginMsg").textContent=""; if(!state.auth){ $("loginMsg").textContent="Firebase não carregou. Confira firebase-config.js e atualize com Ctrl+F5."; return; } try{ await createUserWithEmailAndPassword(state.auth, $("email").value.trim(), $("password").value); toast("Usuário criado com sucesso"); } catch(e){ $("loginMsg").textContent = "Erro ao criar usuário: " + errorText(e); } }
-async function loadEquipamentos(){ const snap = await getDocs(collection(state.db, "equipamentos")); state.equipamentos = snap.docs.map(d=>({id:d.id, ...d.data()})); state.equipamentos.sort((a,b)=>(a.tipo||"").localeCompare(b.tipo||"") || (a.local||"").localeCompare(b.local||"")); fillFilters(); fillSmartLists(); applyFilters(); renderDashboard(); openEquipmentFromUrlIfNeeded(); }
+async function loadEquipamentos(){ const snap = await getDocs(collection(state.db, "equipamentos")); state.equipamentos = snap.docs.map(d=>({id:d.id, ...d.data()})); state.equipamentos.sort((a,b)=>(a.tipo||"").localeCompare(b.tipo||"") || (a.local||"").localeCompare(b.local||"")); fillFilters(); fillSmartLists(); populateBulkStatusControls(); applyFilters(); renderDashboard(); openEquipmentFromUrlIfNeeded(); }
 function fillFilters(){ fillSelect("filterTipo", [...new Set(state.equipamentos.map(x=>x.tipo).filter(Boolean))].sort()); fillSelect("filterStatus", [...new Set(state.equipamentos.map(x=>x.status).filter(Boolean))].sort()); fillSelect("filterLocal", [...new Set(state.equipamentos.map(x=>x.local).filter(Boolean))].sort()); }
 function fillSelect(id, values){ const el=$(id), current=el.value, first=el.options[0].textContent; el.innerHTML = `<option value="">${first}</option>` + values.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join(""); el.value = current; }
 
@@ -77,6 +77,80 @@ function fillSmartLists(){
     if(dl) dl.innerHTML = [...values].filter(Boolean).sort((a,b)=>a.localeCompare(b)).map(v=>`<option value="${esc(v)}"></option>`).join("");
   });
 }
+function uniqueSorted(key){
+  return [...new Set(state.equipamentos.map(e=>String(e[key]||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+}
+function populateBulkStatusControls(){
+  const localSelect = $("bulkLocalSelect");
+  const statusSelect = $("bulkStatusSelect");
+  if(!localSelect || !statusSelect) return;
+  const currentLocal = localSelect.value;
+  const currentStatus = statusSelect.value;
+  const locais = uniqueSorted("local");
+  const statuses = new Set(["Ativo","Reserva","Em manutenção","Baixado","Emprestado", ...uniqueSorted("status")]);
+  localSelect.innerHTML = '<option value="">Selecione o local</option>' + locais.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
+  statusSelect.innerHTML = '<option value="">Selecione o status</option>' + [...statuses].filter(Boolean).sort((a,b)=>a.localeCompare(b)).map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
+  if(locais.includes(currentLocal)) localSelect.value = currentLocal;
+  if([...statuses].includes(currentStatus)) statusSelect.value = currentStatus;
+}
+function getBulkStatusSelection(){
+  const local = $("bulkLocalSelect")?.value || "";
+  const status = $("bulkStatusSelect")?.value || "";
+  const obs = $("bulkStatusObs")?.value?.trim() || "";
+  const items = state.equipamentos.filter(e=>String(e.local||"").trim() === local);
+  return { local, status, obs, items };
+}
+function renderBulkPreview(){
+  const msg = $("bulkStatusMsg"), list = $("bulkPreviewList");
+  if(!msg || !list) return;
+  const {local, status, items} = getBulkStatusSelection();
+  if(!local){ msg.textContent = "Selecione um local para conferir."; list.classList.add("hidden"); list.innerHTML = ""; return; }
+  const willChange = status ? items.filter(e=>(e.status || "Ativo") !== status).length : items.length;
+  msg.textContent = status ? `${items.length} equipamento(s) encontrados em ${local}. ${willChange} terão o status alterado para ${status}.` : `${items.length} equipamento(s) encontrados em ${local}. Selecione o novo status para aplicar.`;
+  list.classList.toggle("hidden", !items.length);
+  list.innerHTML = items.slice(0,60).map(e=>`<div><b>${esc(e.patrimonio || e.hostname || e.numeroSerie || e.imei || "Sem identificação")}</b><span>${esc(e.tipo || "")} · ${esc(e.modelo || e.categoria || "")} · Status atual: ${esc(e.status || "Ativo")}</span></div>`).join("") + (items.length>60 ? `<div><b>+ ${items.length-60} equipamento(s)</b><span>Lista resumida para manter a tela leve.</span></div>` : "");
+}
+async function applyBulkStatusByLocal(){
+  if(!canAdmin()) return toast("Apenas administrador.");
+  const msg = $("bulkStatusMsg");
+  const {local, status, obs, items} = getBulkStatusSelection();
+  if(!local || !status){ if(msg) msg.textContent = "Selecione o local e o novo status."; return; }
+  const toUpdate = items.filter(e=>(e.status || "Ativo") !== status);
+  if(!items.length){ if(msg) msg.textContent = "Nenhum equipamento encontrado nesse local."; return; }
+  if(!toUpdate.length){ if(msg) msg.textContent = `Todos os equipamentos de ${local} já estão com status ${status}.`; return; }
+  const resumo = `${toUpdate.length} de ${items.length} equipamento(s) do local ${local} terão o status alterado para ${status}.`;
+  if(!confirm(resumo + "\n\nDeseja confirmar essa alteração?")) return;
+  try{
+    for(let i=0;i<toUpdate.length;i+=450){
+      const batch = writeBatch(state.db);
+      toUpdate.slice(i,i+450).forEach(item=>{
+        batch.update(doc(state.db,"equipamentos",item.id), {
+          status,
+          atualizadoEm: serverTimestamp(),
+          atualizadoPor: state.user?.email || ""
+        });
+      });
+      await batch.commit();
+    }
+    await addDoc(collection(state.db,"movimentacoes"), {
+      acao:"Alteração de status por local",
+      alteracoes:[resumo, obs ? `Observação: ${obs}` : "Sem observação"],
+      local,
+      status,
+      usuario:state.user?.email||"",
+      data:serverTimestamp()
+    });
+    if(msg) msg.textContent = "Alteração concluída com sucesso.";
+    toast("Status atualizado por local");
+    await loadEquipamentos();
+    await loadHistory();
+    renderBulkPreview();
+  }catch(e){
+    if(msg) msg.textContent = "Erro ao alterar status: " + errorText(e);
+    toast("Erro ao alterar status");
+  }
+}
+
 function applyFilters(){ const term = $("searchInput")?.value?.toLowerCase() || ""; const tipo = $("filterTipo")?.value || "", status = $("filterStatus")?.value || "", local = $("filterLocal")?.value || ""; state.filtered = state.equipamentos.filter(e=>{ const blob = Object.values(e).join(" ").toLowerCase(); return (!term || blob.includes(term)) && (!tipo || e.tipo===tipo) && (!status || e.status===status) && (!local || e.local===local); }); state.page=1; renderTable(); }
 function renderTable(){
   const total=state.filtered.length, pages=Math.max(1, Math.ceil(total/state.perPage)); state.page=Math.min(state.page,pages); const rows=state.filtered.slice((state.page-1)*state.perPage, state.page*state.perPage);
@@ -290,7 +364,7 @@ $("loginBtn").onclick=login; $("createUserBtn").onclick=createUser; $("logoutBtn
 $("backToListBtn").onclick=()=>showView("equipamentos");
 $("editDetailBtn").onclick=()=>{ const item=state.equipamentos.find(x=>x.id===state.currentDetailId); if(item){ setFormData(item); showView("cadastro"); } };
 $("equipForm").onsubmit=saveEquip; $("clearFormBtn").onclick=()=>setFormData(); $("openNewBtn").onclick=()=>{setFormData(); showView("cadastro");};
-$("seedBtn").onclick=seedInitial; $("exportBtn").onclick=exportCSV; $("backupJsonBtn").onclick=backupJSON; $("deleteAllBtn").onclick=deleteAll; $("downloadModelBtn").onclick=downloadExcelModel; $("startQrBtn").onclick=startQrScanner; $("stopQrBtn").onclick=stopQrScanner;
+$("seedBtn").onclick=seedInitial; $("bulkPreviewBtn").onclick=renderBulkPreview; $("bulkApplyStatusBtn").onclick=applyBulkStatusByLocal; $("bulkLocalSelect").onchange=renderBulkPreview; $("bulkStatusSelect").onchange=renderBulkPreview; $("exportBtn").onclick=exportCSV; $("backupJsonBtn").onclick=backupJSON; $("deleteAllBtn").onclick=deleteAll; $("downloadModelBtn").onclick=downloadExcelModel; $("startQrBtn").onclick=startQrScanner; $("stopQrBtn").onclick=stopQrScanner;
 $("importJsonInput").onchange=(e)=>e.target.files[0]&&importJSON(e.target.files[0]).catch(err=>toast("Erro ao importar: "+errorText(err)));
 $("importExcelInput").onchange=(e)=>e.target.files[0]&&importExcel(e.target.files[0]).catch(err=>{ $("excelImportMsg").textContent="Erro ao importar Excel: "+errorText(err); toast("Erro ao importar Excel"); });
 $("fotoInput").onchange=async(e)=>{ const file=e.target.files?.[0]; if(!file) return; try{ $("fotoUrl").value=await compressImage(file); renderPhotoAndQr(getFormData()); toast("Foto carregada no cadastro"); }catch(err){ toast("Erro ao carregar foto: "+errorText(err)); } };

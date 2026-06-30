@@ -45,6 +45,10 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create, update, delete: if admin();
     }
+    match /imagensModelos/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if admin();
+    }
     match /usuarios/{uid} {
       allow read: if signedIn();
       allow create: if signedIn() && uid == request.auth.uid;

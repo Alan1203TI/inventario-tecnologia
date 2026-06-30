@@ -3,7 +3,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, collection, addDoc, doc, setDoc, updateDoc, deleteDoc, getDocs, writeBatch, serverTimestamp, query, orderBy, limit, getDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
-const state = { app:null, auth:null, db:null, equipamentos:[], filtered:[], page:1, perPage:25, user:null, perfil:null, usuarios:[], categoriaImagens:{}, qrScanner:null, pendingEquipId:null, currentDetailId:null };
+const state = { app:null, auth:null, db:null, equipamentos:[], filtered:[], page:1, perPage:25, user:null, perfil:null, usuarios:[], categoriaImagens:{}, modeloImagens:{}, qrScanner:null, pendingEquipId:null, currentDetailId:null };
 const DEFAULT_TIPOS = ["Tablet","Smartphone","Notebook","Computador","Monitor","Impressora","Outro"];
 const ROLES = { admin:"Administrador", tecnico:"Técnico TI", consulta:"Consulta" };
 const canAdmin = () => state.perfil?.nivel === "admin";
@@ -26,6 +26,7 @@ function initFirebase(){
         await ensureUserProfile(user);
         applyPermissions();
         await loadCategoriaImagens();
+        await loadModeloImagens();
         await loadEquipamentos(); await loadHistory(); if(canAdmin()) await loadUsers();
       } else { $("loginScreen").classList.remove("hidden"); $("appScreen").classList.add("hidden"); }
     });
@@ -58,17 +59,36 @@ async function createUser(){ $("loginMsg").textContent=""; if(!state.auth){ $("l
 function categoriaKey(tipo){
   return normalizeKey(tipo || "Outro") || "outro";
 }
+function modeloKey(tipo, modelo){
+  return `${categoriaKey(tipo)}__${normalizeKey(modelo || "Sem modelo") || "semmodelo"}`;
+}
 function getTiposCadastrados(){
   const tipos = new Set(DEFAULT_TIPOS);
   state.equipamentos.forEach(e=>{ if(e.tipo) tipos.add(String(e.tipo).trim()); });
   Object.values(state.categoriaImagens || {}).forEach(c=>{ if(c.tipo) tipos.add(String(c.tipo).trim()); });
+  Object.values(state.modeloImagens || {}).forEach(m=>{ if(m.tipo) tipos.add(String(m.tipo).trim()); });
   return [...tipos].filter(Boolean).sort((a,b)=>a.localeCompare(b));
+}
+function getModelosPorTipo(tipo){
+  const alvo = String(tipo || "").trim();
+  const modelos = new Set();
+  state.equipamentos.forEach(e=>{
+    if(String(e.tipo||"").trim() === alvo && e.modelo) modelos.add(String(e.modelo).trim());
+  });
+  Object.values(state.modeloImagens || {}).forEach(m=>{
+    if(String(m.tipo||"").trim() === alvo && m.modelo) modelos.add(String(m.modelo).trim());
+  });
+  return [...modelos].filter(Boolean).sort((a,b)=>a.localeCompare(b));
 }
 function getImagemCategoria(tipo){
   return state.categoriaImagens[categoriaKey(tipo)]?.imagemUrl || "";
 }
+function getImagemModelo(tipo, modelo){
+  if(!modelo) return "";
+  return state.modeloImagens[modeloKey(tipo, modelo)]?.imagemUrl || "";
+}
 function getFotoEquipamento(e={}){
-  return e.fotoUrl || getImagemCategoria(e.tipo);
+  return e.fotoUrl || getImagemModelo(e.tipo, e.modelo) || getImagemCategoria(e.tipo);
 }
 async function loadCategoriaImagens(){
   if(!state.db) return;
@@ -84,32 +104,77 @@ async function loadCategoriaImagens(){
     state.categoriaImagens = {};
   }
 }
+async function loadModeloImagens(){
+  if(!state.db) return;
+  try{
+    const snap = await getDocs(collection(state.db, "imagensModelos"));
+    state.modeloImagens = {};
+    snap.docs.forEach(d=>{
+      const data = d.data() || {};
+      state.modeloImagens[d.id] = { id:d.id, ...data };
+    });
+  }catch(e){
+    console.warn("Não foi possível carregar imagens dos modelos", e);
+    state.modeloImagens = {};
+  }
+}
 function renderCategoriaImagemAdmin(){
   const list = $("categoryImageList");
   if(!list) return;
   const tipos = getTiposCadastrados();
   list.innerHTML = tipos.map(tipo=>{
-    const key = categoriaKey(tipo);
-    const img = getImagemCategoria(tipo);
-    const preview = img ? `<img src="${esc(img)}" alt="Imagem de ${esc(tipo)}">` : `<div class="category-image-empty">Sem imagem</div>`;
-    return `<div class="category-image-row" data-category-row="${esc(key)}" data-category-tipo="${esc(tipo)}">
-      <div class="category-image-preview">${preview}</div>
-      <div class="category-image-info">
-        <b>${esc(tipo)}</b>
-        <small>${state.equipamentos.filter(e=>String(e.tipo||"").trim()===tipo).length} equipamento(s) cadastrado(s)</small>
-        <input data-category-url="${esc(key)}" value="${esc(img)}" placeholder="Cole uma URL ou selecione um arquivo abaixo">
-        <div class="category-image-actions">
-          <label class="file-label small-file-label">Selecionar imagem<input type="file" accept="image/*" data-category-file="${esc(key)}"></label>
-          <button class="btn small primary" data-save-category-image="${esc(key)}">Salvar</button>
-          ${img ? `<button class="btn small secondary" data-clear-category-image="${esc(key)}">Remover</button>` : ""}
+    const catKey = categoriaKey(tipo);
+    const catImg = getImagemCategoria(tipo);
+    const catPreview = catImg ? `<img src="${esc(catImg)}" alt="Imagem padrão de ${esc(tipo)}">` : `<div class="category-image-empty">Sem imagem padrão</div>`;
+    const modelos = getModelosPorTipo(tipo);
+    const modeloRows = modelos.map(modelo=>renderModeloImagemRow(tipo, modelo)).join("") || `<p class="muted small-muted">Nenhum modelo cadastrado nesta categoria. Use o campo abaixo para criar o primeiro.</p>`;
+    return `<div class="category-admin-block" data-category-block="${esc(catKey)}" data-category-tipo="${esc(tipo)}">
+      <div class="category-admin-header">
+        <div class="category-image-preview">${catPreview}</div>
+        <div class="category-image-info">
+          <b>${esc(tipo)}</b>
+          <small>${state.equipamentos.filter(e=>String(e.tipo||"").trim()===tipo).length} equipamento(s) cadastrado(s)</small>
+          <input data-category-url="${esc(catKey)}" value="${esc(catImg)}" placeholder="Imagem padrão da categoria, usada quando o modelo não tiver imagem">
+          <div class="category-image-actions">
+            <label class="file-label small-file-label">Imagem da categoria<input type="file" accept="image/*" data-category-file="${esc(catKey)}"></label>
+            <button class="btn small primary" data-save-category-image="${esc(catKey)}">Salvar categoria</button>
+            ${catImg ? `<button class="btn small secondary" data-clear-category-image="${esc(catKey)}">Remover</button>` : ""}
+          </div>
+        </div>
+      </div>
+      <div class="model-image-section">
+        <h4>Modelos desta categoria</h4>
+        <div class="model-image-list">${modeloRows}</div>
+        <div class="model-add-row">
+          <input data-new-model-name="${esc(catKey)}" placeholder="Novo modelo. Ex.: A31, A32, T500, Dell 3420">
+          <button class="btn small primary" data-add-model-image="${esc(catKey)}">Adicionar modelo</button>
         </div>
       </div>
     </div>`;
   }).join("") || "<p>Nenhum tipo encontrado.</p>";
 }
+function renderModeloImagemRow(tipo, modelo){
+  const key = modeloKey(tipo, modelo);
+  const img = getImagemModelo(tipo, modelo);
+  const preview = img ? `<img src="${esc(img)}" alt="Imagem de ${esc(modelo)}">` : `<div class="category-image-empty">Sem imagem</div>`;
+  const count = state.equipamentos.filter(e=>String(e.tipo||"").trim()===String(tipo||"").trim() && String(e.modelo||"").trim()===String(modelo||"").trim()).length;
+  return `<div class="model-image-row" data-model-row="${esc(key)}" data-model-tipo="${esc(tipo)}" data-model-name="${esc(modelo)}">
+    <div class="model-image-preview">${preview}</div>
+    <div class="category-image-info">
+      <b>${esc(modelo)}</b>
+      <small>${count} equipamento(s) deste modelo</small>
+      <input data-model-url="${esc(key)}" value="${esc(img)}" placeholder="Cole uma URL ou selecione um arquivo abaixo">
+      <div class="category-image-actions">
+        <label class="file-label small-file-label">Selecionar imagem<input type="file" accept="image/*" data-model-file="${esc(key)}"></label>
+        <button class="btn small primary" data-save-model-image="${esc(key)}">Salvar modelo</button>
+        ${img ? `<button class="btn small secondary" data-clear-model-image="${esc(key)}">Remover imagem</button>` : ""}
+      </div>
+    </div>
+  </div>`;
+}
 async function saveCategoriaImagem(key, clear=false){
   if(!canAdmin()) return toast("Apenas administrador.");
-  const row = document.querySelector(`[data-category-row="${CSS.escape(key)}"]`);
+  const row = document.querySelector(`[data-category-block="${CSS.escape(key)}"]`);
   if(!row) return;
   const tipo = row.dataset.categoryTipo || "Outro";
   const input = row.querySelector(`[data-category-url="${CSS.escape(key)}"]`);
@@ -121,6 +186,36 @@ async function saveCategoriaImagem(key, clear=false){
     renderPhotoAndQr(getFormData());
     toast(clear ? "Imagem da categoria removida" : "Imagem da categoria salva");
   }catch(e){ toast("Erro ao salvar imagem: "+errorText(e)); }
+}
+async function addModeloImagem(catKey){
+  if(!canAdmin()) return toast("Apenas administrador.");
+  const row = document.querySelector(`[data-category-block="${CSS.escape(catKey)}"]`);
+  const tipo = row?.dataset.categoryTipo || "Outro";
+  const input = row?.querySelector(`[data-new-model-name="${CSS.escape(catKey)}"]`);
+  const modelo = (input?.value || "").trim();
+  if(!modelo) return toast("Digite o nome do modelo.");
+  const key = modeloKey(tipo, modelo);
+  await setDoc(doc(state.db,"imagensModelos",key), {tipo, modelo, imagemUrl:"", atualizadoEm:serverTimestamp(), atualizadoPor:state.user?.email||""}, {merge:true});
+  await loadModeloImagens();
+  renderCategoriaImagemAdmin();
+  updateModeloOptions();
+  toast("Modelo adicionado. Agora selecione a imagem dele.");
+}
+async function saveModeloImagem(key, clear=false){
+  if(!canAdmin()) return toast("Apenas administrador.");
+  const row = document.querySelector(`[data-model-row="${CSS.escape(key)}"]`);
+  if(!row) return;
+  const tipo = row.dataset.modelTipo || "Outro";
+  const modelo = row.dataset.modelName || "Sem modelo";
+  const input = row.querySelector(`[data-model-url="${CSS.escape(key)}"]`);
+  const imagemUrl = clear ? "" : (input?.value || "").trim();
+  try{
+    await setDoc(doc(state.db,"imagensModelos",key), {tipo, modelo, imagemUrl, atualizadoEm:serverTimestamp(), atualizadoPor:state.user?.email||""}, {merge:true});
+    await loadModeloImagens();
+    renderCategoriaImagemAdmin();
+    renderPhotoAndQr(getFormData());
+    toast(clear ? "Imagem do modelo removida" : "Imagem do modelo salva");
+  }catch(e){ toast("Erro ao salvar imagem do modelo: "+errorText(e)); }
 }
 async function loadEquipamentos(){ const snap = await getDocs(collection(state.db, "equipamentos")); state.equipamentos = snap.docs.map(d=>({id:d.id, ...d.data()})); state.equipamentos.sort((a,b)=>(a.tipo||"").localeCompare(b.tipo||"") || (a.local||"").localeCompare(b.local||"")); fillFilters(); fillSmartLists(); populateBulkStatusControls(); populateQrPdfControls(); applyFilters(); renderDashboard(); openEquipmentFromUrlIfNeeded(); }
 function fillFilters(){ fillSelect("filterTipo", [...new Set(state.equipamentos.map(x=>x.tipo).filter(Boolean))].sort()); fillSelect("filterStatus", [...new Set(state.equipamentos.map(x=>x.status).filter(Boolean))].sort()); fillSelect("filterLocal", [...new Set(state.equipamentos.map(x=>x.local).filter(Boolean))].sort()); }
@@ -141,11 +236,20 @@ function fillSmartLists(){
     localOptions:"local", responsavelOptions:"responsavel", statusOptions:"status", origemOptions:"origem"
   };
   Object.entries(map).forEach(([listId,key])=>{
+    if(listId === "modeloOptions") return;
     const values = new Set(defaults[listId] || []);
     state.equipamentos.forEach(e=>{ if(e[key]) values.add(String(e[key]).trim()); });
     const dl = $(listId);
     if(dl) dl.innerHTML = [...values].filter(Boolean).sort((a,b)=>a.localeCompare(b)).map(v=>`<option value="${esc(v)}"></option>`).join("");
   });
+  updateModeloOptions();
+}
+function updateModeloOptions(){
+  const dl = $("modeloOptions");
+  if(!dl) return;
+  const tipo = $("tipo")?.value || "";
+  const modelos = tipo ? getModelosPorTipo(tipo) : uniqueSorted("modelo");
+  dl.innerHTML = modelos.map(v=>`<option value="${esc(v)}"></option>`).join("");
 }
 function uniqueSorted(key){
   return [...new Set(state.equipamentos.map(e=>String(e[key]||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
@@ -231,8 +335,8 @@ function renderDashboard(){ const count=(fn)=>state.equipamentos.filter(fn).leng
 function groupBy(arr,key){ return arr.reduce((acc,e)=>{ const k=e[key]||"Não informado"; acc[k]=(acc[k]||0)+1; return acc; },{}); }
 function makeBars(id,data){ const max=Math.max(1,...Object.values(data)); $(id).innerHTML=Object.entries(data).map(([k,v])=>`<div class="bar-row"><span>${esc(k)}</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.round(v/max*100)}%"></div></div><b>${v}</b></div>`).join("") || "<p>Nenhum dado ainda.</p>";}
 function getFormData(){ return ["tipo","categoria","modelo","numeroSerie","patrimonio","imei","hostname","local","etiqueta","responsavel","status","origem","fotoUrl","observacao"].reduce((o,id)=>{o[id]=$(id).value.trim(); return o;},{}); }
-function setFormData(e={}){ ["tipo","categoria","modelo","numeroSerie","patrimonio","imei","hostname","local","etiqueta","responsavel","status","origem","fotoUrl","observacao"].forEach(id=>$(id).value=e[id]||""); $("tipo").value=e.tipo||"Tablet"; $("status").value=e.status||"Ativo"; $("editId").value=e.id||""; $("formTitle").textContent=e.id?"Editar equipamento":"Novo equipamento"; renderPhotoAndQr(e); document.querySelectorAll("#equipForm input,#equipForm select,#equipForm textarea,#equipForm button[type='submit']").forEach(el=>{ if(el.id!=="clearFormBtn") el.disabled=!canEdit(); }); }
-function renderPhotoAndQr(e={}){ const img=$("photoPreview"), qr=$("qrBox"); const foto = getFotoEquipamento(e); if(foto){ img.src=foto; img.title = e.fotoUrl ? "Foto manual deste equipamento" : "Imagem padrão da categoria"; img.classList.remove("hidden"); } else { img.removeAttribute("src"); img.classList.add("hidden"); } const code=e.id || e.patrimonio || e.numeroSerie || e.imei || e.hostname; if(code){ const qrData = e.id ? `${location.origin}${location.pathname}?equip=${encodeURIComponent(e.id)}` : code; const text=encodeURIComponent(qrData); qr.innerHTML=`<img alt="QR Code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${text}"><small>QR Code do equipamento</small><small class="muted">${e.id ? "Abre este equipamento no sistema" : "Salve o cadastro para gerar o link direto"}</small>`; qr.classList.remove("hidden"); } else qr.classList.add("hidden"); }
+function setFormData(e={}){ ["tipo","categoria","modelo","numeroSerie","patrimonio","imei","hostname","local","etiqueta","responsavel","status","origem","fotoUrl","observacao"].forEach(id=>$(id).value=e[id]||""); $("tipo").value=e.tipo||"Tablet"; $("status").value=e.status||"Ativo"; $("editId").value=e.id||""; $("formTitle").textContent=e.id?"Editar equipamento":"Novo equipamento"; updateModeloOptions(); renderPhotoAndQr(e); document.querySelectorAll("#equipForm input,#equipForm select,#equipForm textarea,#equipForm button[type='submit']").forEach(el=>{ if(el.id!=="clearFormBtn") el.disabled=!canEdit(); }); }
+function renderPhotoAndQr(e={}){ const img=$("photoPreview"), qr=$("qrBox"); const foto = getFotoEquipamento(e); if(foto){ img.src=foto; img.title = e.fotoUrl ? "Foto manual deste equipamento" : (getImagemModelo(e.tipo, e.modelo) ? "Imagem padrão do modelo" : "Imagem padrão da categoria"); img.classList.remove("hidden"); } else { img.removeAttribute("src"); img.classList.add("hidden"); } const code=e.id || e.patrimonio || e.numeroSerie || e.imei || e.hostname; if(code){ const qrData = e.id ? `${location.origin}${location.pathname}?equip=${encodeURIComponent(e.id)}` : code; const text=encodeURIComponent(qrData); qr.innerHTML=`<img alt="QR Code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${text}"><small>QR Code do equipamento</small><small class="muted">${e.id ? "Abre este equipamento no sistema" : "Salve o cadastro para gerar o link direto"}</small>`; qr.classList.remove("hidden"); } else qr.classList.add("hidden"); }
 async function saveEquip(e){
   e.preventDefault(); if(!canEdit()){ toast("Seu usuário é somente consulta."); return; }
   const data=getFormData(); const id=$("editId").value;
@@ -534,8 +638,14 @@ document.addEventListener("click", async (e)=>{
   const saveRoleId=e.target.dataset?.saveRole;
   const saveCatImage=e.target.dataset?.saveCategoryImage;
   const clearCatImage=e.target.dataset?.clearCategoryImage;
+  const addModelImage=e.target.dataset?.addModelImage;
+  const saveModelImage=e.target.dataset?.saveModelImage;
+  const clearModelImage=e.target.dataset?.clearModelImage;
   if(saveCatImage){ await saveCategoriaImagem(saveCatImage); return; }
   if(clearCatImage){ await saveCategoriaImagem(clearCatImage, true); return; }
+  if(addModelImage){ await addModeloImagem(addModelImage); return; }
+  if(saveModelImage){ await saveModeloImagem(saveModelImage); return; }
+  if(clearModelImage){ await saveModeloImagem(clearModelImage, true); return; }
   if(viewEquip && !edit && !del){ await openEquipmentById(viewEquip); return; }
   if(edit){ const item=state.equipamentos.find(x=>x.id===edit); setFormData(item); showView("cadastro"); return; }
   if(del && canAdmin() && confirm("Excluir este equipamento?")){ const item=state.equipamentos.find(x=>x.id===del)||{}; await deleteDoc(doc(state.db,"equipamentos",del)); await addDoc(collection(state.db,"movimentacoes"), {equipamentoId:del, patrimonio:item.patrimonio||"", serie:item.numeroSerie||item.imei||"", acao:"Exclusão", alteracoes:["Equipamento excluído"], usuario:state.user?.email||"", data:serverTimestamp()}); await loadEquipamentos(); await loadHistory(); toast("Equipamento excluído"); return; }
@@ -544,14 +654,22 @@ document.addEventListener("click", async (e)=>{
 document.querySelectorAll(".sidebar nav a").forEach(a=>a.addEventListener("click",ev=>{ev.preventDefault(); showView(a.dataset.view);}));
 document.addEventListener("change", async (e)=>{
   const key=e.target.dataset?.categoryFile;
-  if(!key) return;
+  const modelKey=e.target.dataset?.modelFile;
+  if(!key && !modelKey) return;
   const file=e.target.files?.[0];
   if(!file) return;
   try{
-    const row=document.querySelector(`[data-category-row="${CSS.escape(key)}"]`);
-    const input=row?.querySelector(`[data-category-url="${CSS.escape(key)}"]`);
-    if(input) input.value = await compressImage(file);
-    toast("Imagem carregada. Clique em Salvar para aplicar na categoria.");
+    if(key){
+      const row=document.querySelector(`[data-category-block="${CSS.escape(key)}"]`);
+      const input=row?.querySelector(`[data-category-url="${CSS.escape(key)}"]`);
+      if(input) input.value = await compressImage(file);
+    }
+    if(modelKey){
+      const row=document.querySelector(`[data-model-row="${CSS.escape(modelKey)}"]`);
+      const input=row?.querySelector(`[data-model-url="${CSS.escape(modelKey)}"]`);
+      if(input) input.value = await compressImage(file);
+    }
+    toast("Imagem carregada. Clique em Salvar para aplicar.");
   }catch(err){ toast("Erro ao carregar imagem: "+errorText(err)); }
 });
 $("loginBtn").onclick=login; $("createUserBtn").onclick=createUser; $("logoutBtn").onclick=()=>signOut(state.auth);
@@ -563,7 +681,8 @@ $("importJsonInput").onchange=(e)=>e.target.files[0]&&importJSON(e.target.files[
 $("importExcelInput").onchange=(e)=>e.target.files[0]&&importExcel(e.target.files[0]).catch(err=>{ $("excelImportMsg").textContent="Erro ao importar Excel: "+errorText(err); toast("Erro ao importar Excel"); });
 $("fotoInput").onchange=async(e)=>{ const file=e.target.files?.[0]; if(!file) return; try{ $("fotoUrl").value=await compressImage(file); renderPhotoAndQr(getFormData()); toast("Foto carregada no cadastro"); }catch(err){ toast("Erro ao carregar foto: "+errorText(err)); } };
 $("fotoUrl").addEventListener("input",()=>renderPhotoAndQr(getFormData()));
-$("tipo").addEventListener("input",()=>renderPhotoAndQr(getFormData()));
+$("tipo").addEventListener("input",()=>{ updateModeloOptions(); renderPhotoAndQr(getFormData()); });
+$("modelo").addEventListener("input",()=>renderPhotoAndQr(getFormData()));
 ["searchInput","filterTipo","filterStatus","filterLocal"].forEach(id=>$(id)?.addEventListener("input",applyFilters));
 $("prevPage").onclick=()=>{state.page=Math.max(1,state.page-1);renderTable();}; $("nextPage").onclick=()=>{state.page+=1;renderTable();};
 

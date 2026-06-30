@@ -77,6 +77,41 @@ function fillSmartLists(){
     if(dl) dl.innerHTML = [...values].filter(Boolean).sort((a,b)=>a.localeCompare(b)).map(v=>`<option value="${esc(v)}"></option>`).join("");
   });
 }
+
+function svgPhoto(title, icon, bg="#eaf2ff", fg="#164a8b"){
+  const safeTitle = String(title || "Equipamento").replace(/[<>&]/g, "");
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" viewBox="0 0 900 620">
+    <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${bg}"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs>
+    <rect width="900" height="620" rx="46" fill="url(#g)"/>
+    <circle cx="450" cy="245" r="132" fill="#ffffff" opacity=".86"/>
+    <text x="450" y="292" font-size="150" text-anchor="middle" dominant-baseline="middle">${icon}</text>
+    <text x="450" y="460" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="800" text-anchor="middle" fill="${fg}">${safeTitle}</text>
+    <text x="450" y="520" font-family="Arial, Helvetica, sans-serif" font-size="28" text-anchor="middle" fill="#64748b">Imagem automática por tipo de item</text>
+  </svg>`;
+  return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
+}
+const AUTO_PHOTOS = {
+  tablet: svgPhoto("Tablet", "▭"),
+  smartphone: svgPhoto("Smartphone", "📱", "#eefdf5", "#166534"),
+  notebook: svgPhoto("Notebook", "💻", "#f3f0ff", "#5b21b6"),
+  computador: svgPhoto("Computador", "🖥️", "#eef6ff", "#075985"),
+  monitor: svgPhoto("Monitor", "🖥️", "#fff7ed", "#9a3412"),
+  impressora: svgPhoto("Impressora", "🖨️", "#f8fafc", "#334155"),
+  outro: svgPhoto("Equipamento", "📦", "#f1f5f9", "#334155")
+};
+function defaultPhotoByType(tipo){
+  const key = normalizeKey(tipo || "outro");
+  if(key.includes("tablet")) return AUTO_PHOTOS.tablet;
+  if(key.includes("smart") || key.includes("celular") || key.includes("telefone")) return AUTO_PHOTOS.smartphone;
+  if(key.includes("note") || key.includes("laptop")) return AUTO_PHOTOS.notebook;
+  if(key.includes("comput") || key.includes("desktop") || key.includes("pc")) return AUTO_PHOTOS.computador;
+  if(key.includes("monitor")) return AUTO_PHOTOS.monitor;
+  if(key.includes("impress")) return AUTO_PHOTOS.impressora;
+  return AUTO_PHOTOS.outro;
+}
+function photoForEquipment(e={}){ return (e.fotoUrl && String(e.fotoUrl).trim()) || defaultPhotoByType(e.tipo); }
+function refreshAutoPhoto(){ renderPhotoAndQr(getFormData()); }
+
 function uniqueSorted(key){
   return [...new Set(state.equipamentos.map(e=>String(e[key]||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
 }
@@ -162,7 +197,7 @@ function groupBy(arr,key){ return arr.reduce((acc,e)=>{ const k=e[key]||"Não in
 function makeBars(id,data){ const max=Math.max(1,...Object.values(data)); $(id).innerHTML=Object.entries(data).map(([k,v])=>`<div class="bar-row"><span>${esc(k)}</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.round(v/max*100)}%"></div></div><b>${v}</b></div>`).join("") || "<p>Nenhum dado ainda.</p>";}
 function getFormData(){ return ["tipo","categoria","modelo","numeroSerie","patrimonio","imei","hostname","local","etiqueta","responsavel","status","origem","fotoUrl","observacao"].reduce((o,id)=>{o[id]=$(id).value.trim(); return o;},{}); }
 function setFormData(e={}){ ["tipo","categoria","modelo","numeroSerie","patrimonio","imei","hostname","local","etiqueta","responsavel","status","origem","fotoUrl","observacao"].forEach(id=>$(id).value=e[id]||""); $("tipo").value=e.tipo||"Tablet"; $("status").value=e.status||"Ativo"; $("editId").value=e.id||""; $("formTitle").textContent=e.id?"Editar equipamento":"Novo equipamento"; renderPhotoAndQr(e); document.querySelectorAll("#equipForm input,#equipForm select,#equipForm textarea,#equipForm button[type='submit']").forEach(el=>{ if(el.id!=="clearFormBtn") el.disabled=!canEdit(); }); }
-function renderPhotoAndQr(e={}){ const img=$("photoPreview"), qr=$("qrBox"); if(e.fotoUrl){ img.src=e.fotoUrl; img.classList.remove("hidden"); } else { img.removeAttribute("src"); img.classList.add("hidden"); } const code=e.id || e.patrimonio || e.numeroSerie || e.imei || e.hostname; if(code){ const qrData = e.id ? `${location.origin}${location.pathname}?equip=${encodeURIComponent(e.id)}` : code; const text=encodeURIComponent(qrData); qr.innerHTML=`<img alt="QR Code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${text}"><small>QR Code do equipamento</small><small class="muted">${e.id ? "Abre este equipamento no sistema" : "Salve o cadastro para gerar o link direto"}</small>`; qr.classList.remove("hidden"); } else qr.classList.add("hidden"); }
+function renderPhotoAndQr(e={}){ const img=$("photoPreview"), qr=$("qrBox"); const photo = photoForEquipment(e); if(photo){ img.src=photo; img.classList.remove("hidden"); img.title = e.fotoUrl ? "Foto manual do equipamento" : "Imagem automática pelo tipo do item"; } else { img.removeAttribute("src"); img.classList.add("hidden"); } const code=e.id || e.patrimonio || e.numeroSerie || e.imei || e.hostname; if(code){ const qrData = e.id ? `${location.origin}${location.pathname}?equip=${encodeURIComponent(e.id)}` : code; const text=encodeURIComponent(qrData); qr.innerHTML=`<img alt="QR Code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${text}"><small>QR Code do equipamento</small><small class="muted">${e.id ? "Abre este equipamento no sistema" : "Salve o cadastro para gerar o link direto"}</small>`; qr.classList.remove("hidden"); } else qr.classList.add("hidden"); }
 async function saveEquip(e){
   e.preventDefault(); if(!canEdit()){ toast("Seu usuário é somente consulta."); return; }
   const data=getFormData(); const id=$("editId").value;
@@ -259,7 +294,8 @@ function renderEquipmentDetail(e={}){
   $("detailSubtitle").textContent = `${e.tipo || "Tipo não informado"}${e.local ? " · " + e.local : ""}`;
   const qrData = e.id ? `${location.origin}${location.pathname}?equip=${encodeURIComponent(e.id)}` : (e.patrimonio || e.numeroSerie || e.imei || e.hostname || "");
   const qrHtml = qrData ? `<div class="detail-qr"><img alt="QR Code" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrData)}"><small>QR Code deste equipamento</small></div>` : "";
-  const fotoHtml = e.fotoUrl ? `<img class="detail-photo" src="${esc(e.fotoUrl)}" alt="Foto do equipamento">` : `<div class="detail-photo empty">Sem foto</div>`;
+  const photo = photoForEquipment(e);
+  const fotoHtml = photo ? `<img class="detail-photo" src="${esc(photo)}" alt="Foto do equipamento">` : `<div class="detail-photo empty">Sem foto</div>`;
   $("detailContent").innerHTML = `
     <div class="detail-top">
       ${fotoHtml}
@@ -474,8 +510,10 @@ $("equipForm").onsubmit=saveEquip; $("clearFormBtn").onclick=()=>setFormData(); 
 $("seedBtn").onclick=seedInitial; $("qrPdfPreviewBtn").onclick=renderQrPdfPreview; $("generateQrPdfBtn").onclick=generateQrPdf; $("qrPdfTipoSelect").onchange=renderQrPdfPreview; $("qrPdfOrderSelect").onchange=renderQrPdfPreview; $("qrPdfSizeSelect").onchange=renderQrPdfPreview; $("bulkPreviewBtn").onclick=renderBulkPreview; $("bulkApplyStatusBtn").onclick=applyBulkStatusByLocal; $("bulkLocalSelect").onchange=renderBulkPreview; $("bulkStatusSelect").onchange=renderBulkPreview; $("exportBtn").onclick=exportCSV; $("backupJsonBtn").onclick=backupJSON; $("deleteAllBtn").onclick=deleteAll; $("downloadModelBtn").onclick=downloadExcelModel; $("startQrBtn").onclick=startQrScanner; $("stopQrBtn").onclick=stopQrScanner;
 $("importJsonInput").onchange=(e)=>e.target.files[0]&&importJSON(e.target.files[0]).catch(err=>toast("Erro ao importar: "+errorText(err)));
 $("importExcelInput").onchange=(e)=>e.target.files[0]&&importExcel(e.target.files[0]).catch(err=>{ $("excelImportMsg").textContent="Erro ao importar Excel: "+errorText(err); toast("Erro ao importar Excel"); });
-$("fotoInput").onchange=async(e)=>{ const file=e.target.files?.[0]; if(!file) return; try{ $("fotoUrl").value=await compressImage(file); renderPhotoAndQr(getFormData()); toast("Foto carregada no cadastro"); }catch(err){ toast("Erro ao carregar foto: "+errorText(err)); } };
+$("fotoInput").onchange=async(e)=>{ const file=e.target.files?.[0]; if(!file) return; try{ $("fotoUrl").value=await compressImage(file); renderPhotoAndQr(getFormData()); toast("Foto manual carregada no cadastro"); }catch(err){ toast("Erro ao carregar foto: "+errorText(err)); } };
 $("fotoUrl").addEventListener("input",()=>renderPhotoAndQr(getFormData()));
+$("tipo").addEventListener("input", refreshAutoPhoto);
+$("categoria").addEventListener("input", refreshAutoPhoto);
 ["searchInput","filterTipo","filterStatus","filterLocal"].forEach(id=>$(id)?.addEventListener("input",applyFilters));
 $("prevPage").onclick=()=>{state.page=Math.max(1,state.page-1);renderTable();}; $("nextPage").onclick=()=>{state.page+=1;renderTable();};
 

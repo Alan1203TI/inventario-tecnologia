@@ -245,11 +245,14 @@ function fillSmartLists(){
   updateModeloOptions();
 }
 function updateModeloOptions(){
-  const dl = $("modeloOptions");
-  if(!dl) return;
+  const select = $("modelo");
+  if(!select) return;
+  const current = select.value || "";
   const tipo = $("tipo")?.value || "";
-  const modelos = tipo ? getModelosPorTipo(tipo) : uniqueSorted("modelo");
-  dl.innerHTML = modelos.map(v=>`<option value="${esc(v)}"></option>`).join("");
+  const modelos = tipo ? getModelosPorTipo(tipo) : [];
+  let placeholder = tipo ? "Selecione o modelo" : "Selecione uma categoria primeiro";
+  select.innerHTML = `<option value="">${esc(placeholder)}</option>` + modelos.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
+  if(current && modelos.includes(current)) select.value = current;
 }
 function uniqueSorted(key){
   return [...new Set(state.equipamentos.map(e=>String(e[key]||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
@@ -335,7 +338,28 @@ function renderDashboard(){ const count=(fn)=>state.equipamentos.filter(fn).leng
 function groupBy(arr,key){ return arr.reduce((acc,e)=>{ const k=e[key]||"Não informado"; acc[k]=(acc[k]||0)+1; return acc; },{}); }
 function makeBars(id,data){ const max=Math.max(1,...Object.values(data)); $(id).innerHTML=Object.entries(data).map(([k,v])=>`<div class="bar-row"><span>${esc(k)}</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.round(v/max*100)}%"></div></div><b>${v}</b></div>`).join("") || "<p>Nenhum dado ainda.</p>";}
 function getFormData(){ return ["tipo","categoria","modelo","numeroSerie","patrimonio","imei","hostname","local","etiqueta","responsavel","status","origem","fotoUrl","observacao"].reduce((o,id)=>{o[id]=$(id).value.trim(); return o;},{}); }
-function setFormData(e={}){ ["tipo","categoria","modelo","numeroSerie","patrimonio","imei","hostname","local","etiqueta","responsavel","status","origem","fotoUrl","observacao"].forEach(id=>$(id).value=e[id]||""); $("tipo").value=e.tipo||"Tablet"; $("status").value=e.status||"Ativo"; $("editId").value=e.id||""; $("formTitle").textContent=e.id?"Editar equipamento":"Novo equipamento"; updateModeloOptions(); renderPhotoAndQr(e); document.querySelectorAll("#equipForm input,#equipForm select,#equipForm textarea,#equipForm button[type='submit']").forEach(el=>{ if(el.id!=="clearFormBtn") el.disabled=!canEdit(); }); }
+function setFormData(e={}){
+  ["tipo","categoria","numeroSerie","patrimonio","imei","hostname","local","etiqueta","responsavel","status","origem","fotoUrl","observacao"].forEach(id=>$(id).value=e[id]||"");
+  $("tipo").value=e.tipo||"Tablet";
+  updateModeloOptions();
+  if(e.modelo){
+    const modelos = getModelosPorTipo($("tipo").value || "");
+    if(!modelos.includes(e.modelo)){
+      const opt = document.createElement("option");
+      opt.value = e.modelo;
+      opt.textContent = e.modelo;
+      $("modelo").appendChild(opt);
+    }
+    $("modelo").value = e.modelo;
+  } else {
+    $("modelo").value = "";
+  }
+  $("status").value=e.status||"Ativo";
+  $("editId").value=e.id||"";
+  $("formTitle").textContent=e.id?"Editar equipamento":"Novo equipamento";
+  renderPhotoAndQr(getFormData());
+  document.querySelectorAll("#equipForm input,#equipForm select,#equipForm textarea,#equipForm button[type='submit']").forEach(el=>{ if(el.id!=="clearFormBtn") el.disabled=!canEdit(); });
+}
 function renderPhotoAndQr(e={}){ const img=$("photoPreview"), qr=$("qrBox"); const foto = getFotoEquipamento(e); if(foto){ img.src=foto; img.title = e.fotoUrl ? "Foto manual deste equipamento" : (getImagemModelo(e.tipo, e.modelo) ? "Imagem padrão do modelo" : "Imagem padrão da categoria"); img.classList.remove("hidden"); } else { img.removeAttribute("src"); img.classList.add("hidden"); } const code=e.id || e.patrimonio || e.numeroSerie || e.imei || e.hostname; if(code){ const qrData = e.id ? `${location.origin}${location.pathname}?equip=${encodeURIComponent(e.id)}` : code; const text=encodeURIComponent(qrData); qr.innerHTML=`<img alt="QR Code" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${text}"><small>QR Code do equipamento</small><small class="muted">${e.id ? "Abre este equipamento no sistema" : "Salve o cadastro para gerar o link direto"}</small>`; qr.classList.remove("hidden"); } else qr.classList.add("hidden"); }
 async function saveEquip(e){
   e.preventDefault(); if(!canEdit()){ toast("Seu usuário é somente consulta."); return; }
@@ -681,8 +705,14 @@ $("importJsonInput").onchange=(e)=>e.target.files[0]&&importJSON(e.target.files[
 $("importExcelInput").onchange=(e)=>e.target.files[0]&&importExcel(e.target.files[0]).catch(err=>{ $("excelImportMsg").textContent="Erro ao importar Excel: "+errorText(err); toast("Erro ao importar Excel"); });
 $("fotoInput").onchange=async(e)=>{ const file=e.target.files?.[0]; if(!file) return; try{ $("fotoUrl").value=await compressImage(file); renderPhotoAndQr(getFormData()); toast("Foto carregada no cadastro"); }catch(err){ toast("Erro ao carregar foto: "+errorText(err)); } };
 $("fotoUrl").addEventListener("input",()=>renderPhotoAndQr(getFormData()));
-$("tipo").addEventListener("input",()=>{ updateModeloOptions(); renderPhotoAndQr(getFormData()); });
-$("modelo").addEventListener("input",()=>renderPhotoAndQr(getFormData()));
+$("tipo").addEventListener("input",()=>{
+  const before = $("modelo").value || "";
+  updateModeloOptions();
+  const tipo = $("tipo")?.value || "";
+  if(before && tipo && !getModelosPorTipo(tipo).includes(before)) $("modelo").value = "";
+  renderPhotoAndQr(getFormData());
+});
+$("modelo").addEventListener("change",()=>renderPhotoAndQr(getFormData()));
 ["searchInput","filterTipo","filterStatus","filterLocal"].forEach(id=>$(id)?.addEventListener("input",applyFilters));
 $("prevPage").onclick=()=>{state.page=Math.max(1,state.page-1);renderTable();}; $("nextPage").onclick=()=>{state.page+=1;renderTable();};
 

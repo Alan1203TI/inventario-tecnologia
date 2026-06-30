@@ -124,7 +124,7 @@
             <input type="hidden" id="editId">
             <label>Tipo<input id="tipo" list="tipoOptions" required placeholder="Tablet, Notebook, Computador..."></label>
             <label>Categoria<input id="categoria" list="categoriaOptions" placeholder="ADM, Educacional, A9+, T500..."></label>
-            <label>Modelo<input id="modelo" list="modeloOptions" placeholder="Modelo"></label>
+            <label>Modelo<select id="modelo"><option value="">Selecione uma categoria primeiro</option></select></label>
             <label>Nº de série<input id="numeroSerie" placeholder="Número de série"></label>
             <label>Patrimônio<input id="patrimonio" placeholder="Patrimônio"></label>
             <label>IMEI<input id="imei" placeholder="IMEI, se houver"></label>
@@ -143,7 +143,6 @@
 
           <datalist id="tipoOptions"></datalist>
           <datalist id="categoriaOptions"></datalist>
-          <datalist id="modeloOptions"></datalist>
           <datalist id="localOptions"></datalist>
           <datalist id="responsavelOptions"></datalist>
           <datalist id="statusOptions"></datalist>

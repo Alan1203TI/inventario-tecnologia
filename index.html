@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=25" />
+  <link rel="stylesheet" href="style.css?v=26" />
 </head>
 <body>
   <div id="toast" class="toast"></div>
@@ -134,8 +134,8 @@
             <label>Responsável<input id="responsavel" list="responsavelOptions" placeholder="Usuário/responsável"></label>
             <label>Status<input id="status" list="statusOptions" placeholder="Ativo, Reserva, Em manutenção..."></label>
             <label>Origem<input id="origem" list="origemOptions" placeholder="Planilha de origem"></label>
-            <label>Foto manual opcional<input id="fotoInput" type="file" accept="image/*"></label>
-            <label>URL da foto manual<input id="fotoUrl" placeholder="Opcional: cole uma URL para substituir a imagem do tipo"></label>
+            <label>Foto do equipamento<input id="fotoInput" type="file" accept="image/*"></label>
+            <label>URL da foto<input id="fotoUrl" placeholder="Foto salva automaticamente ou cole uma URL"></label>
             <label class="full-span">Observação<textarea id="observacao" placeholder="Observações"></textarea></label>
             <div class="full-span photo-preview-wrap"><img id="photoPreview" alt="Prévia da foto" class="photo-preview hidden"><div id="qrBox" class="qr-box hidden"></div></div>
             <div class="full-span form-actions"><button type="submit" class="btn primary">Salvar equipamento</button><button type="button" id="clearFormBtn" class="btn secondary">Limpar</button></div>
@@ -203,6 +203,11 @@
         </div>
 
 
+        <div class="card">
+          <h3>Imagens padrão das categorias</h3>
+          <p class="muted">Escolha uma imagem para cada tipo de item cadastrado. Depois, ao selecionar o tipo no cadastro do equipamento, essa imagem será usada automaticamente. A foto manual do equipamento continua opcional.</p>
+          <div id="categoryImageList" class="category-image-list"></div>
+        </div>
 
         <div class="card">
           <h3>Gerar etiquetas com QR Code em PDF</h3>
@@ -282,6 +287,6 @@
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script type="module" src="app.js?v=25"></script>
+  <script type="module" src="app.js?v=26"></script>
 </body>
 </html>
